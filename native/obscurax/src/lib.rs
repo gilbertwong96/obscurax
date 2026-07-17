@@ -1,10 +1,5 @@
+mod atoms;
 mod error;
-
-mod atoms {
-    rustler::atoms! {
-        world,
-    }
-}
 
 #[rustler::nif]
 fn hello() -> rustler::Atom {
