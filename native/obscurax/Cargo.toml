@@ -9,11 +9,10 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = { version = "0.38", features = ["serde"] }
-# NOTE: Uses a local path fork with Element::node_id() accessor exposed.
-# Upstream PR pending. Revert to git dep once merged:
-# Pinned to the expose-node-id branch of gilbertwong96/obscura (a fork of h4ckf0r0day/obscura)
-# that adds a public Element::node_id() accessor needed for element operations.
-# Upstream PR pending; switch back to h4ckf0r0day/obscura once merged.
+# Pinned to the expose-node-id branch of gilbertwong96/obscura (a fork of
+# h4ckf0r0day/obscura) that adds a public Element::node_id() accessor needed
+# for element operations. Upstream PR pending; switch back to
+# h4ckf0r0day/obscura once merged.
 obscura = { git = "https://github.com/gilbertwong96/obscura.git", branch = "expose-node-id" }
 tokio = { version = "1", features = ["rt", "sync", "time", "macros"] }
 serde = "1"
