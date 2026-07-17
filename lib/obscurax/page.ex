@@ -1,5 +1,41 @@
 defmodule Obscurax.Page do
-  @moduledoc "A browser tab/page — navigation, evaluation, element ops, callbacks."
+  @moduledoc """
+  A browser tab/page — navigation, V8 evaluation, element ops, and callbacks.
+
+  Each page runs on a dedicated OS thread with its own `current_thread` tokio
+  runtime and V8 isolate. The synchronous-feeling API blocks the caller while
+  async operations run on the page thread; V8 evaluation is scheduled on dirty
+  CPU schedulers so it never blocks the BEAM.
+
+  ## Navigation and evaluation
+
+      :ok = Obscurax.Page.goto(page, "https://example.com")
+      {:ok, title} = Obscurax.Page.evaluate(page, "document.title")
+      {:ok, html} = Obscurax.Page.content(page)
+
+  ## Element operations
+
+  Element operations take a `node_id` returned by `query_selector/2` or
+  `wait_for_selector/3`:
+
+      {:ok, node_id} = Obscurax.Page.query_selector(page, "h1")
+      {:ok, text} = Obscurax.Page.element_text(page, node_id)
+      :ok = Obscurax.Page.element_click(page, node_id)
+
+  ## Request observers
+
+      {:ok, _pid} = Obscurax.Page.on_request(page, fn req ->
+        IO.inspect(req.url)
+      end)
+
+  ## Request interception
+
+      :ok = Obscurax.Page.enable_interception(page)
+      receive do
+        {:obscurax_intercept, ref, %{url: url}} ->
+          :ok = Obscurax.reply_intercept(page, ref, :continue)
+      end
+  """
 
   @type t :: %__MODULE__{ref: reference()}
 
