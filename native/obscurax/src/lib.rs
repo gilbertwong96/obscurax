@@ -2,6 +2,7 @@ mod atoms;
 mod browser;
 mod cookie;
 mod error;
+mod page;
 mod page_thread;
 
 #[rustler::nif]

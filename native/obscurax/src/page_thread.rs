@@ -9,7 +9,16 @@ use tokio::sync::{mpsc, oneshot};
 use crate::error::ObscuraxError;
 
 pub enum PageCommand {
-    Close { reply: oneshot::Sender<()> },
+    Goto {
+        url: String,
+        reply: oneshot::Sender<Result<(), String>>,
+    },
+    Url {
+        reply: oneshot::Sender<String>,
+    },
+    Close {
+        reply: oneshot::Sender<()>,
+    },
 }
 
 pub struct PageHandle {
@@ -61,6 +70,13 @@ pub fn spawn_page_thread(
 async fn page_command_loop(page: &mut obscura::Page, mut rx: mpsc::Receiver<PageCommand>) {
     while let Some(cmd) = rx.recv().await {
         match cmd {
+            PageCommand::Goto { url, reply } => {
+                let res = page.goto(&url).await.map_err(|e| e.to_string());
+                let _ = reply.send(res);
+            }
+            PageCommand::Url { reply } => {
+                let _ = reply.send(page.url());
+            }
             PageCommand::Close { reply } => {
                 let _ = reply.send(());
                 break;
