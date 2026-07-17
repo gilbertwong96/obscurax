@@ -22,3 +22,9 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 obscurax-*.tar
 
+# Ignore compiled NIF artifacts.
+/priv/native/
+
+# Ignore Rust build artifacts.
+/native/obscurax/target/
+
