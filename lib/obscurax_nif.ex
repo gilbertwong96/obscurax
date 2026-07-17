@@ -30,4 +30,10 @@ defmodule Obscurax.Nif do
   def page_off_response(_page, _id), do: :erlang.nif_error(:nif_not_loaded)
   def page_enable_interception(_page, _callback_pid), do: :erlang.nif_error(:nif_not_loaded)
   def reply_intercept(_page, _intercept_id, _decision), do: :erlang.nif_error(:nif_not_loaded)
+
+  def cookie_set(_store, _set_cookie, _url), do: :erlang.nif_error(:nif_not_loaded)
+  def cookie_get_all(_store), do: :erlang.nif_error(:nif_not_loaded)
+  def cookie_get_for_url(_store, _url), do: :erlang.nif_error(:nif_not_loaded)
+  def cookie_save(_store, _path), do: :erlang.nif_error(:nif_not_loaded)
+  def cookie_load(_store, _path), do: :erlang.nif_error(:nif_not_loaded)
 end

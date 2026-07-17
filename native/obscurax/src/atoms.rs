@@ -23,6 +23,12 @@ rustler::atoms! {
     method,
     resource_type,
     status,
+    name,
+    value,
+    domain,
+    path,
+    secure,
+    http_only,
 }
 
 use rustler::{Env, Encoder, Term};
