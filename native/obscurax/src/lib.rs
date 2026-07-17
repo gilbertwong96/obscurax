@@ -1,5 +1,8 @@
 mod atoms;
+mod browser;
+mod cookie;
 mod error;
+mod page_thread;
 
 #[rustler::nif]
 fn hello() -> rustler::Atom {
