@@ -19,6 +19,10 @@ rustler::atoms! {
     no_page,
     page_closed,
     internal,
+    url,
+    method,
+    resource_type,
+    status,
 }
 
 use rustler::{Env, Encoder, Term};

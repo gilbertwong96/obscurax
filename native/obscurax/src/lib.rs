@@ -1,5 +1,6 @@
 mod atoms;
 mod browser;
+mod callback;
 mod cookie;
 mod error;
 mod page;

@@ -23,4 +23,11 @@ defmodule Obscurax.Nif do
   def page_element_text(_page, _node_id), do: :erlang.nif_error(:nif_not_loaded)
   def page_element_attribute(_page, _node_id, _name), do: :erlang.nif_error(:nif_not_loaded)
   def page_element_click(_page, _node_id), do: :erlang.nif_error(:nif_not_loaded)
+
+  def page_on_request(_page, _callback_id, _callback_pid), do: :erlang.nif_error(:nif_not_loaded)
+  def page_on_response(_page, _callback_id, _callback_pid), do: :erlang.nif_error(:nif_not_loaded)
+  def page_off_request(_page, _id), do: :erlang.nif_error(:nif_not_loaded)
+  def page_off_response(_page, _id), do: :erlang.nif_error(:nif_not_loaded)
+  def page_enable_interception(_page, _callback_pid), do: :erlang.nif_error(:nif_not_loaded)
+  def reply_intercept(_page, _intercept_id, _decision), do: :erlang.nif_error(:nif_not_loaded)
 end

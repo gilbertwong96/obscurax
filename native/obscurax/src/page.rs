@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use rustler::{Encoder, Env, NifResult, ResourceArc, Term};
+use rustler::types::tuple::get_tuple;
+use rustler::{Atom, Encoder, Env, NifResult, ResourceArc, Term};
 use tokio::sync::oneshot;
 
 use crate::atoms::{self, json_to_term};
@@ -250,4 +252,154 @@ pub fn page_element_click<'a>(
         ))),
         Err(_) => Err(page_closed_err()),
     }
+}
+
+#[rustler::nif]
+pub fn page_on_request<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    callback_id: u64,
+    callback_pid: rustler::LocalPid,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::OnRequest {
+            callback_id,
+            pid: callback_pid,
+            reply: tx,
+        })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let _ = rx.blocking_recv();
+    Ok(atoms::ok().encode(env))
+}
+
+#[rustler::nif]
+pub fn page_on_response<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    callback_id: u64,
+    callback_pid: rustler::LocalPid,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::OnResponse {
+            callback_id,
+            pid: callback_pid,
+            reply: tx,
+        })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let _ = rx.blocking_recv();
+    Ok(atoms::ok().encode(env))
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_off_request<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    id: u64,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::OffRequest { id, reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let removed = rx.blocking_recv().unwrap_or(false);
+    Ok(removed.encode(env))
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_off_response<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    id: u64,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::OffResponse { id, reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let removed = rx.blocking_recv().unwrap_or(false);
+    Ok(removed.encode(env))
+}
+
+#[rustler::nif]
+pub fn page_enable_interception<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    callback_pid: rustler::LocalPid,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::EnableInterception {
+            pid: callback_pid,
+            reply: tx,
+        })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let _ = rx.blocking_recv();
+    Ok(atoms::ok().encode(env))
+}
+
+#[rustler::nif]
+pub fn reply_intercept<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    intercept_id: u64,
+    decision: Term,
+) -> NifResult<Term<'a>> {
+    let resolution = decode_intercept_decision(decision)?;
+    let _delivered = handle.intercept_registry.resolve(intercept_id, resolution);
+    Ok(atoms::ok().encode(env))
+}
+
+fn decode_intercept_decision(term: Term) -> NifResult<obscura::InterceptResolution> {
+    if let Ok(atom) = Atom::from_term(term) {
+        if atom == atoms::continue_() {
+            return Ok(obscura::InterceptResolution::Continue {
+                url: None,
+                method: None,
+                headers: None,
+                body: None,
+            });
+        }
+    }
+
+    let tuple_data = get_tuple(term)?;
+    if tuple_data.is_empty() {
+        return Err(rustler::Error::RaiseAtom("invalid_intercept_decision"));
+    }
+    let tag = Atom::from_term(tuple_data[0])?;
+    if tag == atoms::fulfill() {
+        let status: u16 = tuple_data[1].decode()?;
+        let headers: HashMap<String, String> = tuple_data[2].decode()?;
+        let body: String = tuple_data[3].decode()?;
+        return Ok(obscura::InterceptResolution::Fulfill {
+            status,
+            headers,
+            body,
+        });
+    }
+    if tag == atoms::fail() {
+        let reason: String = tuple_data[1].decode()?;
+        return Ok(obscura::InterceptResolution::Fail { reason });
+    }
+
+    Err(rustler::Error::RaiseAtom("invalid_intercept_decision"))
 }
