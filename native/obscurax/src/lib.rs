@@ -1,3 +1,5 @@
+mod error;
+
 mod atoms {
     rustler::atoms! {
         world,
