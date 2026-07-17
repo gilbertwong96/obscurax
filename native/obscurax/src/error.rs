@@ -1,11 +1,26 @@
-use rustler::{NifException, SerdeTerm};
+use rustler::{Atom, NifException, SerdeTerm};
+
+use crate::atoms;
 
 #[derive(NifException)]
 #[module = "Obscurax.Error"]
 pub struct ObscuraxError {
-    pub kind: String,
+    pub kind: Atom,
     pub message: String,
     pub context: SerdeTerm<serde_json::Value>,
+}
+
+fn kind_atom(kind: &str) -> Atom {
+    match kind {
+        "navigation" => atoms::navigation(),
+        "js_eval" => atoms::js_eval(),
+        "timeout" => atoms::timeout(),
+        "element_not_found" => atoms::element_not_found(),
+        "no_page" => atoms::no_page(),
+        "page_closed" => atoms::page_closed(),
+        "internal" => atoms::internal(),
+        _ => atoms::internal(),
+    }
 }
 
 impl ObscuraxError {
@@ -19,7 +34,7 @@ impl ObscuraxError {
             obscura::Error::Internal(e) => ("internal", e.to_string()),
         };
         ObscuraxError {
-            kind: kind.to_string(),
+            kind: kind_atom(kind),
             message,
             context: SerdeTerm(serde_json::Value::Null),
         }
@@ -27,7 +42,7 @@ impl ObscuraxError {
 
     pub fn page_closed() -> Self {
         ObscuraxError {
-            kind: "page_closed".to_string(),
+            kind: kind_atom("page_closed"),
             message: "page thread has exited".to_string(),
             context: SerdeTerm(serde_json::Value::Null),
         }
@@ -36,7 +51,7 @@ impl ObscuraxError {
 
 pub fn nif_error(kind: &str, message: impl Into<String>) -> ObscuraxError {
     ObscuraxError {
-        kind: kind.to_string(),
+        kind: kind_atom(kind),
         message: message.into(),
         context: SerdeTerm(serde_json::Value::Null),
     }

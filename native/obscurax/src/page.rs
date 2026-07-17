@@ -3,11 +3,15 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use rustler::{Encoder, Env, NifResult, ResourceArc, Term};
 use tokio::sync::oneshot;
 
-use crate::atoms;
+use crate::atoms::{self, json_to_term};
 use crate::error::ObscuraxError;
 use crate::page_thread::{PageCommand, PageHandle};
 
 static ASYNC_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+fn page_closed_err() -> rustler::Error {
+    rustler::Error::Term(Box::new(ObscuraxError::page_closed()))
+}
 
 #[rustler::nif]
 pub fn page_goto<'a>(
@@ -59,4 +63,191 @@ pub fn page_close<'a>(env: Env<'a>, handle: ResourceArc<PageHandle>) -> NifResul
     let _ = handle.tx.blocking_send(PageCommand::Close { reply: tx });
     let _ = rx.blocking_recv();
     Ok(atoms::ok().encode(env))
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_evaluate<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    expr: String,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::Evaluate { expr, reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let val = rx.blocking_recv().map_err(|_| page_closed_err())?;
+    Ok((atoms::ok(), json_to_term(env, &val)).encode(env))
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_content<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::Content { reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let html = rx.blocking_recv().map_err(|_| page_closed_err())?;
+    Ok((atoms::ok(), html).encode(env))
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_query_selector<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    selector: String,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::QuerySelector { selector, reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let nid = rx.blocking_recv().map_err(|_| page_closed_err())?;
+    Ok(match nid {
+        Some(id) => (atoms::ok(), id).encode(env),
+        None => atoms::nil().encode(env),
+    })
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_wait_for_selector<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    selector: String,
+    timeout_ms: u64,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::WaitForSelector {
+            selector,
+            timeout_ms,
+            reply: tx,
+        })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    match rx.blocking_recv() {
+        Ok(Ok(id)) => Ok((atoms::ok(), id).encode(env)),
+        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(
+            crate::error::nif_error("timeout", msg),
+        ))),
+        Err(_) => Err(page_closed_err()),
+    }
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_settle<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    max_ms: u64,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::Settle { max_ms, reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let _ = rx.blocking_recv();
+    Ok(atoms::ok().encode(env))
+}
+
+#[rustler::nif]
+pub fn page_add_preload_script<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    script: String,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::AddPreloadScript { script, reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let _ = rx.blocking_recv();
+    Ok(atoms::ok().encode(env))
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_element_text<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    node_id: u64,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::ElementText { node_id, reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let text = rx.blocking_recv().map_err(|_| page_closed_err())?;
+    Ok((atoms::ok(), text).encode(env))
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_element_attribute<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    node_id: u64,
+    name: String,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::ElementAttribute {
+            node_id,
+            name,
+            reply: tx,
+        })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let attr = rx.blocking_recv().map_err(|_| page_closed_err())?;
+    Ok(match attr {
+        Some(v) => (atoms::ok(), v).encode(env),
+        None => atoms::nil().encode(env),
+    })
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_element_click<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    node_id: u64,
+) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .blocking_send(PageCommand::ElementClick { node_id, reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    match rx.blocking_recv() {
+        Ok(Ok(())) => Ok(atoms::ok().encode(env)),
+        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(
+            crate::error::nif_error("element_not_found", msg),
+        ))),
+        Err(_) => Err(page_closed_err()),
+    }
 }

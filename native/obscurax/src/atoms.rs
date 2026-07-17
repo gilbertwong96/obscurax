@@ -12,6 +12,13 @@ rustler::atoms! {
     continue_ = "continue",
     fulfill,
     fail,
+    navigation,
+    js_eval,
+    timeout,
+    element_not_found,
+    no_page,
+    page_closed,
+    internal,
 }
 
 use rustler::{Env, Encoder, Term};
@@ -31,7 +38,11 @@ pub fn json_to_term<'a>(env: Env<'a>, v: &Value) -> Term<'a> {
             if let Some(i) = n.as_i64() {
                 i.encode(env)
             } else if let Some(f) = n.as_f64() {
-                f.encode(env)
+                if f.fract() == 0.0 && f.is_finite() {
+                    (f as i64).encode(env)
+                } else {
+                    f.encode(env)
+                }
             } else {
                 n.to_string().encode(env)
             }
