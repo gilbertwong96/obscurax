@@ -130,6 +130,7 @@ pub fn page_wait_for_selector<'a>(
     selector: String,
     timeout_ms: u64,
 ) -> NifResult<Term<'a>> {
+    let selector_ctx = selector.clone();
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
@@ -144,9 +145,9 @@ pub fn page_wait_for_selector<'a>(
     }
     match rx.blocking_recv() {
         Ok(Ok(id)) => Ok((atoms::ok(), id).encode(env)),
-        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(crate::error::nif_error(
-            "timeout", msg,
-        )))),
+        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(
+            crate::error::ObscuraxError::timeout(Some(&selector_ctx), Some(timeout_ms), msg),
+        ))),
         Err(_) => Err(page_closed_err()),
     }
 }
@@ -247,10 +248,9 @@ pub fn page_element_click<'a>(
     }
     match rx.blocking_recv() {
         Ok(Ok(())) => Ok(atoms::ok().encode(env)),
-        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(crate::error::nif_error(
-            "element_not_found",
-            msg,
-        )))),
+        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(
+            crate::error::ObscuraxError::element_not_found(None, Some(node_id), msg),
+        ))),
         Err(_) => Err(page_closed_err()),
     }
 }

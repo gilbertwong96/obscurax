@@ -71,7 +71,7 @@ pub fn browser_new_page<'a>(
             let arc = ResourceArc::new(page);
             Ok((atoms::ok(), arc).encode(env))
         }
-        Err(e) => Err(rustler::Error::Term(Box::new(e))),
+        Err(e) => Err(rustler::Error::Term(e)),
     }
 }
 

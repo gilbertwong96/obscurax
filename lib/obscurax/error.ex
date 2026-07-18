@@ -4,6 +4,20 @@ defmodule Obscurax.Error do
 
   All NIF operations return `{:ok, result}` or `{:error, %Obscurax.Error{}}`.
   Bang variants (`goto!/2`, etc.) raise this as an exception.
+
+  The `context` map carries operation-specific details that vary by `kind`:
+
+  | kind                 | context fields                          |
+  |----------------------|-----------------------------------------|
+  | `:navigation`        | `url`                                   |
+  | `:timeout`           | `url` *or* `selector` + `timeout_ms`    |
+  | `:element_not_found` | `selector` *and/or* `node_id`          |
+  | `:js_eval`           | `expression`                            |
+  | `:no_page`           | *(empty)*                               |
+  | `:page_closed`       | *(empty)*                               |
+  | `:internal`          | *(empty)*                               |
+
+  All context keys are atoms. Fields not relevant to a given `kind` are `nil`.
   """
 
   @type kind ::
@@ -15,10 +29,18 @@ defmodule Obscurax.Error do
           | :page_closed
           | :internal
 
+  @type context :: %{
+          url: String.t() | nil,
+          selector: String.t() | nil,
+          timeout_ms: non_neg_integer() | nil,
+          node_id: non_neg_integer() | nil,
+          expression: String.t() | nil
+        }
+
   @type t :: %__MODULE__{
           kind: kind(),
           message: String.t(),
-          context: map()
+          context: context()
         }
 
   defexception [:kind, :message, :context]

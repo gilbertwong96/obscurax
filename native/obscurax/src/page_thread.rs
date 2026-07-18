@@ -103,7 +103,7 @@ impl Resource for PageHandle {}
 pub fn spawn_page_thread(
     browser: Arc<Browser>,
     pid: LocalPid,
-) -> Result<PageHandle, ObscuraxError> {
+) -> Result<PageHandle, Box<ObscuraxError>> {
     let (tx, rx) = mpsc::channel::<PageCommand>(64);
     let closed = Arc::new(AtomicBool::new(false));
     let intercept_registry = Arc::new(InterceptRegistry::new());
