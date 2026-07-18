@@ -184,6 +184,10 @@ defmodule Obscurax.Page do
     end
   end
 
+  @doc """
+  Register a response observer. The callback receives a map with `:url`,
+  `:method`, `:resource_type`, and `:status` for each response.
+  """
   @spec on_response(t(), (map() -> term())) :: {:ok, pid()} | {:error, Error.t()}
   def on_response(%__MODULE__{ref: ref}, fun) do
     case Obscurax.Callback.start_link(ref, :response, fun) do

@@ -47,11 +47,7 @@ defmodule Obscurax.BrowserTest do
 
   # ── Error paths ───────────────────────────────────────────
 
-  test "new_page!/1 raises on closed browser" do
-    {:ok, browser} = Browser.new()
-    Browser.new_page!(browser)
-    # Closing and re-calling won't raise — new_page always succeeds.
-    # Instead, test that new!/1 works when called with valid opts.
+  test "new!/1 returns browser on valid opts" do
     assert %Browser{} = Browser.new!()
   end
 end
