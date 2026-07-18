@@ -41,7 +41,7 @@ pub fn cookie_set<'a>(
     handle
         .store
         .set(&set_cookie, &url)
-        .map(|_| atoms::ok().encode(env))
+        .map(|()| atoms::ok().encode(env))
         .map_err(|e| rustler::Error::Term(Box::new(ObscuraxError::from_obscura(&e))))
 }
 
@@ -78,7 +78,7 @@ pub fn cookie_save<'a>(
     handle
         .store
         .save_to_file(Path::new(&path))
-        .map(|_| atoms::ok().encode(env))
+        .map(|()| atoms::ok().encode(env))
         .map_err(|e| rustler::Error::Term(Box::new(ObscuraxError::from_obscura(&e))))
 }
 

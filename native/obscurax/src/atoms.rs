@@ -31,7 +31,7 @@ rustler::atoms! {
     http_only,
 }
 
-use rustler::{Env, Encoder, Term};
+use rustler::{Encoder, Env, Term};
 use serde_json::Value;
 
 pub fn json_to_term<'a>(env: Env<'a>, v: &Value) -> Term<'a> {
@@ -49,6 +49,7 @@ pub fn json_to_term<'a>(env: Env<'a>, v: &Value) -> Term<'a> {
                 i.encode(env)
             } else if let Some(f) = n.as_f64() {
                 if f.fract() == 0.0 && f.is_finite() {
+                    #[allow(clippy::cast_possible_truncation)]
                     (f as i64).encode(env)
                 } else {
                     f.encode(env)

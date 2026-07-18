@@ -1,5 +1,11 @@
-use std::sync::Arc;
+#![allow(
+    clippy::let_and_return,
+    clippy::manual_let_else,
+    clippy::match_single_binding
+)]
+
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread;
 
 use obscura::Browser;
@@ -85,6 +91,8 @@ pub enum PageCommand {
 pub struct PageHandle {
     pub tx: mpsc::Sender<PageCommand>,
     pub pid: LocalPid,
+    /// Set to true when the page thread exits. Reserved for future page_closed detection.
+    #[allow(dead_code)]
     pub closed: Arc<AtomicBool>,
     pub intercept_registry: Arc<InterceptRegistry>,
 }
@@ -136,6 +144,7 @@ pub fn spawn_page_thread(
     })
 }
 
+#[allow(clippy::too_many_lines)]
 async fn page_command_loop(
     page: &mut obscura::Page,
     mut rx: mpsc::Receiver<PageCommand>,
@@ -161,7 +170,11 @@ async fn page_command_loop(
                 let nid = query_selector_nid(page, &selector);
                 let _ = reply.send(nid);
             }
-            PageCommand::WaitForSelector { selector, timeout_ms, reply } => {
+            PageCommand::WaitForSelector {
+                selector,
+                timeout_ms,
+                reply,
+            } => {
                 let start = std::time::Instant::now();
                 let timeout = std::time::Duration::from_millis(timeout_ms);
                 let res = loop {
@@ -194,7 +207,11 @@ async fn page_command_loop(
                 let val = page.evaluate(&js);
                 let _ = reply.send(val.as_str().unwrap_or("").to_string());
             }
-            PageCommand::ElementAttribute { node_id, name, reply } => {
+            PageCommand::ElementAttribute {
+                node_id,
+                name,
+                reply,
+            } => {
                 let js = format!(
                     "(function(){{var el=globalThis._wrap&&globalThis._wrap({});return el?el.getAttribute('{}'):null;}})()",
                     node_id, name
@@ -225,9 +242,13 @@ async fn page_command_loop(
                 };
                 let _ = reply.send(res);
             }
-            PageCommand::OnRequest { callback_id, pid, reply } => {
-                let cb: obscura::RequestCallback = std::sync::Arc::new(
-                    move |info: &obscura::RequestInfo| {
+            PageCommand::OnRequest {
+                callback_id,
+                pid,
+                reply,
+            } => {
+                let cb: obscura::RequestCallback =
+                    std::sync::Arc::new(move |info: &obscura::RequestInfo| {
                         let info_url = info.url.to_string();
                         let info_method = info.method.clone();
                         let info_rt = format!("{:?}", info.resource_type);
@@ -242,12 +263,15 @@ async fn page_command_loop(
                                 .unwrap_or(atoms::nil().encode(env));
                             (atoms::obscurax_request(), callback_id, req_map).encode(env)
                         });
-                    },
-                );
+                    });
                 let _id = page.on_request(cb);
                 let _ = reply.send(());
             }
-            PageCommand::OnResponse { callback_id, pid, reply } => {
+            PageCommand::OnResponse {
+                callback_id,
+                pid,
+                reply,
+            } => {
                 let cb: obscura::ResponseCallback = std::sync::Arc::new(
                     move |info: &obscura::RequestInfo, resp: &obscura::Response| {
                         let info_url = info.url.to_string();
@@ -301,6 +325,7 @@ async fn page_command_loop(
 ///
 /// This inlines the JS that obscura's `Element` wrapper runs so we never
 /// touch the `Element` struct (whose `node_id` field is private upstream).
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn query_selector_nid(page: &mut obscura::Page, selector: &str) -> Option<u64> {
     let escaped = selector.replace('\\', "\\\\").replace('\'', "\\'");
     let js = format!(
@@ -308,6 +333,9 @@ fn query_selector_nid(page: &mut obscura::Page, selector: &str) -> Option<u64> {
         escaped
     );
     let val = page.evaluate(&js);
-    val.as_u64()
-        .or_else(|| val.as_f64().filter(|f| f.is_finite() && *f >= 0.0).map(|f| f as u64))
+    val.as_u64().or_else(|| {
+        val.as_f64()
+            .filter(|f| f.is_finite() && *f >= 0.0)
+            .map(|f| f as u64)
+    })
 }

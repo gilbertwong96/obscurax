@@ -18,7 +18,7 @@ fn kind_atom(kind: &str) -> Atom {
         "element_not_found" => atoms::element_not_found(),
         "no_page" => atoms::no_page(),
         "page_closed" => atoms::page_closed(),
-        "internal" => atoms::internal(),
+        // "internal" and any unknown kind fall back to internal
         _ => atoms::internal(),
     }
 }

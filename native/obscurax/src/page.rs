@@ -86,10 +86,7 @@ pub fn page_evaluate<'a>(
 }
 
 #[rustler::nif(schedule = "DirtyCpu")]
-pub fn page_content<'a>(
-    env: Env<'a>,
-    handle: ResourceArc<PageHandle>,
-) -> NifResult<Term<'a>> {
+pub fn page_content<'a>(env: Env<'a>, handle: ResourceArc<PageHandle>) -> NifResult<Term<'a>> {
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
@@ -111,7 +108,10 @@ pub fn page_query_selector<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::QuerySelector { selector, reply: tx })
+        .blocking_send(PageCommand::QuerySelector {
+            selector,
+            reply: tx,
+        })
         .is_err()
     {
         return Err(page_closed_err());
@@ -144,9 +144,9 @@ pub fn page_wait_for_selector<'a>(
     }
     match rx.blocking_recv() {
         Ok(Ok(id)) => Ok((atoms::ok(), id).encode(env)),
-        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(
-            crate::error::nif_error("timeout", msg),
-        ))),
+        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(crate::error::nif_error(
+            "timeout", msg,
+        )))),
         Err(_) => Err(page_closed_err()),
     }
 }
@@ -247,9 +247,10 @@ pub fn page_element_click<'a>(
     }
     match rx.blocking_recv() {
         Ok(Ok(())) => Ok(atoms::ok().encode(env)),
-        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(
-            crate::error::nif_error("element_not_found", msg),
-        ))),
+        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(crate::error::nif_error(
+            "element_not_found",
+            msg,
+        )))),
         Err(_) => Err(page_closed_err()),
     }
 }

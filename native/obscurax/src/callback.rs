@@ -58,7 +58,9 @@ pub fn spawn_interception_drain(
 ) {
     tokio::spawn(async move {
         loop {
-            let Some(req) = intercept_rx.recv().await else { break };
+            let Some(req) = intercept_rx.recv().await else {
+                break;
+            };
 
             let id = registry.next_id();
             let (reply_tx, reply_rx) = oneshot::channel::<InterceptResolution>();
@@ -73,10 +75,13 @@ pub fn spawn_interception_drain(
                 let pairs: Vec<(rustler::Term, rustler::Term)> = vec![
                     (atoms::url().encode(env), req_url.encode(env)),
                     (atoms::method().encode(env), req_method.encode(env)),
-                    (atoms::resource_type().encode(env), req_resource_type.encode(env)),
+                    (
+                        atoms::resource_type().encode(env),
+                        req_resource_type.encode(env),
+                    ),
                 ];
-                let req_map = rustler::Term::map_from_pairs(env, &pairs)
-                    .unwrap_or(atoms::nil().encode(env));
+                let req_map =
+                    rustler::Term::map_from_pairs(env, &pairs).unwrap_or(atoms::nil().encode(env));
                 (atoms::obscurax_intercept(), id, req_map).encode(env)
             });
 

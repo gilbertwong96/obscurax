@@ -39,13 +39,12 @@ pub fn browser_new<'a>(env: Env<'a>, opts: Term<'a>) -> NifResult<Term<'a>> {
     let user_agent = map_get_string(opts, "user_agent");
     let storage_dir = map_get_string(opts, "storage_dir");
 
-    let mut config = obscura::BrowserConfig::default();
-    config.stealth = stealth;
-    config.proxy = proxy;
-    config.user_agent = user_agent;
-    if let Some(dir) = storage_dir {
-        config.storage_dir = Some(std::path::PathBuf::from(dir));
-    }
+    let config = obscura::BrowserConfig {
+        stealth,
+        proxy,
+        user_agent,
+        storage_dir: storage_dir.map(std::path::PathBuf::from),
+    };
 
     match Browser::build(config) {
         Ok(browser) => {
