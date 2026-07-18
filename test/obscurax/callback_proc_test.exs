@@ -84,14 +84,14 @@ defmodule Obscurax.CallbackProcTest do
   end
 
   test "start_link with invalid kind raises ArgumentError" do
+    invalid_kind = String.to_atom("invalid")
+
     assert_raise FunctionClauseError, fn ->
-      Callback.start_link(nil, :invalid, fn _ -> :ok end)
+      Callback.start_link(nil, invalid_kind, fn _ -> :ok end)
     end
   end
 
   test "callback survives a raising user function", %{page: page} do
-    parent = self()
-
     {:ok, cb} =
       Callback.start_link(page, :request, fn _req ->
         raise "boom"

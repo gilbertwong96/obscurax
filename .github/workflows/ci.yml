@@ -24,7 +24,7 @@ jobs:
             otp: "27"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
@@ -40,7 +40,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y cmake
 
       - name: Restore Cargo cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -50,7 +50,7 @@ jobs:
           restore-keys: cargo-${{ runner.os }}-
 
       - name: Restore Mix cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             _build

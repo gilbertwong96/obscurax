@@ -14,14 +14,10 @@ defmodule Obscurax.Nif do
     targets: ~w(
       aarch64-apple-darwin
       aarch64-unknown-linux-gnu
-      aarch64-unknown-linux-musl
-      x86_64-apple-darwin
       x86_64-pc-windows-msvc
-      x86_64-pc-windows-gnu
       x86_64-unknown-linux-gnu
-      x86_64-unknown-linux-musl
     ),
-    nif_versions: ["2.16", "2.17"],
+    nif_versions: ["2.17"],
     mode: mode,
     force_build: System.get_env("OBSCURAX_BUILD") in ["1", "true"]
 
