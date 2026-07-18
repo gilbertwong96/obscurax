@@ -18,10 +18,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
-            otp: "27"
           - os: ubuntu-24.04
-            otp: "27"
+            otp: "29"
           - os: macos-14
             otp: "27"
 
