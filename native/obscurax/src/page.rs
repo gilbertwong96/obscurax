@@ -22,35 +22,24 @@ pub fn page_goto<'a>(
     url: String,
 ) -> NifResult<Term<'a>> {
     let id = ASYNC_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::Goto { url, reply: tx })
+        .try_send(PageCommand::Goto {
+            url,
+            id,
+            pid: handle.pid,
+        })
         .is_err()
     {
-        return Err(rustler::Error::Term(Box::new(ObscuraxError::page_closed())));
+        return Err(page_closed_err());
     }
-    let pid = handle.pid;
-    let mut owned_env = rustler::OwnedEnv::new();
-    std::thread::spawn(move || {
-        let result = rx.blocking_recv();
-        let _ = owned_env.send_and_clear(&pid, |env| match result {
-            Ok(Ok(())) => (atoms::obscurax_result(), id, atoms::ok()).encode(env),
-            Ok(Err(msg)) => (atoms::obscurax_result(), id, atoms::error(), msg).encode(env),
-            Err(_) => (atoms::obscurax_result(), id, atoms::error(), "page closed").encode(env),
-        });
-    });
     Ok(id.encode(env))
 }
 
-#[rustler::nif]
+#[rustler::nif(schedule = "DirtyCpu")]
 pub fn page_url<'a>(env: Env<'a>, handle: ResourceArc<PageHandle>) -> NifResult<Term<'a>> {
     let (tx, rx) = oneshot::channel();
-    if handle
-        .tx
-        .blocking_send(PageCommand::Url { reply: tx })
-        .is_err()
-    {
+    if handle.tx.try_send(PageCommand::Url { reply: tx }).is_err() {
         return Err(rustler::Error::Term(Box::new(ObscuraxError::page_closed())));
     }
     let url = rx
@@ -59,10 +48,10 @@ pub fn page_url<'a>(env: Env<'a>, handle: ResourceArc<PageHandle>) -> NifResult<
     Ok((atoms::ok(), url).encode(env))
 }
 
-#[rustler::nif]
+#[rustler::nif(schedule = "DirtyCpu")]
 pub fn page_close<'a>(env: Env<'a>, handle: ResourceArc<PageHandle>) -> NifResult<Term<'a>> {
     let (tx, rx) = oneshot::channel();
-    let _ = handle.tx.blocking_send(PageCommand::Close { reply: tx });
+    let _ = handle.tx.try_send(PageCommand::Close { reply: tx });
     let _ = rx.blocking_recv();
     Ok(atoms::ok().encode(env))
 }
@@ -76,7 +65,7 @@ pub fn page_evaluate<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::Evaluate { expr, reply: tx })
+        .try_send(PageCommand::Evaluate { expr, reply: tx })
         .is_err()
     {
         return Err(page_closed_err());
@@ -90,7 +79,7 @@ pub fn page_content<'a>(env: Env<'a>, handle: ResourceArc<PageHandle>) -> NifRes
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::Content { reply: tx })
+        .try_send(PageCommand::Content { reply: tx })
         .is_err()
     {
         return Err(page_closed_err());
@@ -108,7 +97,7 @@ pub fn page_query_selector<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::QuerySelector {
+        .try_send(PageCommand::QuerySelector {
             selector,
             reply: tx,
         })
@@ -134,7 +123,7 @@ pub fn page_wait_for_selector<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::WaitForSelector {
+        .try_send(PageCommand::WaitForSelector {
             selector,
             timeout_ms,
             reply: tx,
@@ -161,7 +150,7 @@ pub fn page_settle<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::Settle { max_ms, reply: tx })
+        .try_send(PageCommand::Settle { max_ms, reply: tx })
         .is_err()
     {
         return Err(page_closed_err());
@@ -170,7 +159,7 @@ pub fn page_settle<'a>(
     Ok(atoms::ok().encode(env))
 }
 
-#[rustler::nif]
+#[rustler::nif(schedule = "DirtyCpu")]
 pub fn page_add_preload_script<'a>(
     env: Env<'a>,
     handle: ResourceArc<PageHandle>,
@@ -179,7 +168,7 @@ pub fn page_add_preload_script<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::AddPreloadScript { script, reply: tx })
+        .try_send(PageCommand::AddPreloadScript { script, reply: tx })
         .is_err()
     {
         return Err(page_closed_err());
@@ -197,7 +186,7 @@ pub fn page_element_text<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::ElementText { node_id, reply: tx })
+        .try_send(PageCommand::ElementText { node_id, reply: tx })
         .is_err()
     {
         return Err(page_closed_err());
@@ -216,7 +205,7 @@ pub fn page_element_attribute<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::ElementAttribute {
+        .try_send(PageCommand::ElementAttribute {
             node_id,
             name,
             reply: tx,
@@ -241,7 +230,7 @@ pub fn page_element_click<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::ElementClick { node_id, reply: tx })
+        .try_send(PageCommand::ElementClick { node_id, reply: tx })
         .is_err()
     {
         return Err(page_closed_err());
@@ -255,7 +244,7 @@ pub fn page_element_click<'a>(
     }
 }
 
-#[rustler::nif]
+#[rustler::nif(schedule = "DirtyCpu")]
 pub fn page_on_request<'a>(
     env: Env<'a>,
     handle: ResourceArc<PageHandle>,
@@ -265,7 +254,7 @@ pub fn page_on_request<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::OnRequest {
+        .try_send(PageCommand::OnRequest {
             callback_id,
             pid: callback_pid,
             reply: tx,
@@ -278,7 +267,7 @@ pub fn page_on_request<'a>(
     Ok(atoms::ok().encode(env))
 }
 
-#[rustler::nif]
+#[rustler::nif(schedule = "DirtyCpu")]
 pub fn page_on_response<'a>(
     env: Env<'a>,
     handle: ResourceArc<PageHandle>,
@@ -288,7 +277,7 @@ pub fn page_on_response<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::OnResponse {
+        .try_send(PageCommand::OnResponse {
             callback_id,
             pid: callback_pid,
             reply: tx,
@@ -310,7 +299,7 @@ pub fn page_off_request<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::OffRequest { id, reply: tx })
+        .try_send(PageCommand::OffRequest { id, reply: tx })
         .is_err()
     {
         return Err(page_closed_err());
@@ -328,7 +317,7 @@ pub fn page_off_response<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::OffResponse { id, reply: tx })
+        .try_send(PageCommand::OffResponse { id, reply: tx })
         .is_err()
     {
         return Err(page_closed_err());
@@ -337,7 +326,7 @@ pub fn page_off_response<'a>(
     Ok(removed.encode(env))
 }
 
-#[rustler::nif]
+#[rustler::nif(schedule = "DirtyCpu")]
 pub fn page_enable_interception<'a>(
     env: Env<'a>,
     handle: ResourceArc<PageHandle>,
@@ -346,7 +335,7 @@ pub fn page_enable_interception<'a>(
     let (tx, rx) = oneshot::channel();
     if handle
         .tx
-        .blocking_send(PageCommand::EnableInterception {
+        .try_send(PageCommand::EnableInterception {
             pid: callback_pid,
             reply: tx,
         })

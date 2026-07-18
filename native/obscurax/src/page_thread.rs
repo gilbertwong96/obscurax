@@ -19,7 +19,8 @@ use crate::error::ObscuraxError;
 pub enum PageCommand {
     Goto {
         url: String,
-        reply: oneshot::Sender<Result<(), String>>,
+        id: u64,
+        pid: rustler::LocalPid,
     },
     Url {
         reply: oneshot::Sender<String>,
@@ -152,9 +153,15 @@ async fn page_command_loop(
 ) {
     while let Some(cmd) = rx.recv().await {
         match cmd {
-            PageCommand::Goto { url, reply } => {
-                let res = page.goto(&url).await.map_err(|e| e.to_string());
-                let _ = reply.send(res);
+            PageCommand::Goto { url, id, pid } => {
+                let res = page.goto(&url).await;
+                let mut env = rustler::OwnedEnv::new();
+                let _ = env.send_and_clear(&pid, |env| match res {
+                    Ok(()) => (atoms::obscurax_result(), id, atoms::ok()).encode(env),
+                    Err(e) => {
+                        (atoms::obscurax_result(), id, atoms::error(), e.to_string()).encode(env)
+                    }
+                });
             }
             PageCommand::Url { reply } => {
                 let _ = reply.send(page.url());
