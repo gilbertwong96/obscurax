@@ -20,6 +20,7 @@ defmodule Obscurax.IntegrationTest do
 
   test "bang variants raise Obscurax.Error", %{page: page} do
     :ok = Obscurax.Page.goto(page, "https://example.com")
+
     assert_raise Obscurax.Error, fn ->
       Obscurax.Page.wait_for_selector!(page, ".nonexistent", 100)
     end

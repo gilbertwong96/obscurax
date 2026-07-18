@@ -5,7 +5,7 @@ defmodule Obscurax.CookieStore do
 
   defstruct [:ref]
 
-  alias Obscurax.{Nif, Error}
+  alias Obscurax.{Error, Nif}
 
   @spec set(t(), String.t(), String.t()) :: :ok | {:error, Error.t()}
   def set(%__MODULE__{ref: ref}, set_cookie, url) do

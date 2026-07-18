@@ -15,6 +15,12 @@ defmodule Obscurax.Error do
           | :page_closed
           | :internal
 
+  @type t :: %__MODULE__{
+          kind: kind(),
+          message: String.t(),
+          context: map()
+        }
+
   defexception [:kind, :message, :context]
 
   @impl true

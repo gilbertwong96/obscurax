@@ -41,7 +41,7 @@ defmodule Obscurax.Page do
 
   defstruct [:ref]
 
-  alias Obscurax.{Nif, Error}
+  alias Obscurax.{Error, Nif}
 
   @default_timeout 30_000
 
@@ -51,7 +51,9 @@ defmodule Obscurax.Page do
     id = Nif.page_goto(ref, url)
 
     receive do
-      {:obscurax_result, ^id, :ok} -> :ok
+      {:obscurax_result, ^id, :ok} ->
+        :ok
+
       {:obscurax_result, ^id, :error, msg} ->
         {:error, Error.exception(kind: :navigation, message: msg, context: %{url: url})}
     after
@@ -104,7 +106,7 @@ defmodule Obscurax.Page do
   def query_selector(%__MODULE__{ref: ref}, selector) do
     case Nif.page_query_selector(ref, selector) do
       {:ok, node_id} -> {:ok, node_id}
-      :nil -> {:ok, nil}
+      nil -> {:ok, nil}
       {:error, error} -> {:error, error}
     end
   end
@@ -135,11 +137,11 @@ defmodule Obscurax.Page do
   end
 
   @spec element_attribute(t(), non_neg_integer(), String.t()) ::
-          {:ok, String.t()} | :nil | {:error, Error.t()}
+          {:ok, String.t()} | nil | {:error, Error.t()}
   def element_attribute(%__MODULE__{ref: ref}, node_id, name) do
     case Nif.page_element_attribute(ref, node_id, name) do
       {:ok, value} -> {:ok, value}
-      :nil -> :nil
+      nil -> nil
       {:error, error} -> {:error, error}
     end
   end
@@ -171,16 +173,22 @@ defmodule Obscurax.Page do
   @spec on_request(t(), (map() -> term())) :: {:ok, pid()} | {:error, Error.t()}
   def on_request(%__MODULE__{ref: ref}, fun) do
     case Obscurax.Callback.start_link(ref, :request, fun) do
-      {:ok, pid} -> {:ok, pid}
-      {:error, _} -> {:error, Error.exception(kind: :internal, message: "callback start failed", context: %{})}
+      {:ok, pid} ->
+        {:ok, pid}
+
+      {:error, _} ->
+        {:error, Error.exception(kind: :internal, message: "callback start failed", context: %{})}
     end
   end
 
   @spec on_response(t(), (map() -> term())) :: {:ok, pid()} | {:error, Error.t()}
   def on_response(%__MODULE__{ref: ref}, fun) do
     case Obscurax.Callback.start_link(ref, :response, fun) do
-      {:ok, pid} -> {:ok, pid}
-      {:error, _} -> {:error, Error.exception(kind: :internal, message: "callback start failed", context: %{})}
+      {:ok, pid} ->
+        {:ok, pid}
+
+      {:error, _} ->
+        {:error, Error.exception(kind: :internal, message: "callback start failed", context: %{})}
     end
   end
 
