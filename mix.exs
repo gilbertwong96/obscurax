@@ -65,6 +65,7 @@ defmodule Obscurax.MixProject do
     [
       files: ~w(
         lib
+        native/obscurax/.cargo
         native/obscurax/src
         native/obscurax/Cargo.*
         native/obscurax/rust-toolchain.toml
