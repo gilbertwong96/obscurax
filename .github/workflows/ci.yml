@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  MIX_ENV: test
+
+jobs:
+  test:
+    name: Build & Test (${{ matrix.os }} / OTP ${{ matrix.otp }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14, windows-2022]
+        otp: [27, 28]
+        exclude:
+          # macOS runner only has OTP 27 via Homebrew
+          - os: macos-14
+            otp: 28
+          # Windows: use the single available OTP
+          - os: windows-2022
+            otp: 27
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        id: beam
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otp }}
+          elixir-version: 1.20
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux build deps
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y cmake
+
+      - name: Restore Cargo cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/obscurax/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('native/obscurax/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Restore Mix cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            _build
+            deps
+          key: mix-${{ runner.os }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-${{ runner.os }}-${{ matrix.otp }}-
+
+      - name: Compile
+        run: mix compile --all-warnings --warnings-as-errors
+
+      - name: Check formatted
+        run: mix format --check-formatted
+
+      - name: Run tests
+        run: mix test --cover
+        env:
+          # Tests hit example.com; allow generous timeouts on CI
+          OBSCURAX_TEST_TIMEOUT: 60000

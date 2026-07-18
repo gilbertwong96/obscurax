@@ -18,11 +18,13 @@ end
 
 ### Build requirements
 
-- **Rust 1.91+** ([rustup](https://rustup.rs)) — rustler 0.38 MSRV
-- **C++ compiler** — clang/gcc on Linux, Xcode Command Line Tools on macOS (required for the V8 build)
+- **Rust 1.91+** ([rustup](https://rustup.rs)) — rustler 0.38 MSRV. A `rust-toolchain.toml` is included, so rustup automatically installs the correct version.
+- **C++ compiler** — clang/gcc on Linux, Xcode Command Line Tools on macOS, MSVC on Windows (required for the V8 build)
 - **git** — to fetch obscura as a Cargo dependency
 
 The first `mix compile` takes ~5 minutes because V8 builds from source. Subsequent builds are fast — the V8 artifact is cached by Cargo.
+
+Rustler compiles the Rust crate into a native shared library (`obscurax.so` on Linux, `obscurax.dylib` on macOS, `obscurax.dll` on Windows) and places it in `priv/native/`. This happens automatically — no manual build steps are needed.
 
 ## Quick start
 
