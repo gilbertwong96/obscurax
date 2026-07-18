@@ -1,9 +1,29 @@
 defmodule Obscurax.Nif do
   @moduledoc false
-  use Rustler,
+
+  mix_config = Mix.Project.config()
+  version = mix_config[:version]
+  github_url = mix_config[:package][:links]["GitHub"]
+  mode = if Mix.env() in [:dev, :test], do: :debug, else: :release
+
+  use RustlerPrecompiled,
     otp_app: :obscurax,
     crate: :obscurax,
-    mode: if(Mix.env() == :prod, do: :release, else: :debug)
+    version: version,
+    base_url: "#{github_url}/releases/download/v#{version}",
+    targets: ~w(
+      aarch64-apple-darwin
+      aarch64-unknown-linux-gnu
+      aarch64-unknown-linux-musl
+      x86_64-apple-darwin
+      x86_64-pc-windows-msvc
+      x86_64-pc-windows-gnu
+      x86_64-unknown-linux-gnu
+      x86_64-unknown-linux-musl
+    ),
+    nif_versions: ["2.16", "2.17"],
+    mode: mode,
+    force_build: System.get_env("OBSCURAX_BUILD") in ["1", "true"]
 
   def hello, do: :erlang.nif_error(:nif_not_loaded)
 

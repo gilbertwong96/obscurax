@@ -8,6 +8,7 @@ on:
 
 env:
   MIX_ENV: test
+  OBSCURAX_BUILD: "true"
 
 jobs:
   test:
@@ -16,25 +17,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, macos-14, windows-2022]
-        otp: [27, 28]
-        exclude:
-          # macOS runner only has OTP 27 via Homebrew
+        include:
+          - os: ubuntu-22.04
+            otp: "27"
+          - os: ubuntu-24.04
+            otp: "27"
           - os: macos-14
-            otp: 28
-          # Windows: use the single available OTP
-          - os: windows-2022
-            otp: 27
+            otp: "27"
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Elixir
-        id: beam
         uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp }}
-          elixir-version: 1.20
+          elixir-version: "1.20"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -62,6 +60,9 @@ jobs:
           key: mix-${{ runner.os }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
           restore-keys: mix-${{ runner.os }}-${{ matrix.otp }}-
 
+      - name: Install deps
+        run: mix deps.get
+
       - name: Compile
         run: mix compile --all-warnings --warnings-as-errors
 
@@ -70,6 +71,3 @@ jobs:
 
       - name: Run tests
         run: mix test --cover
-        env:
-          # Tests hit example.com; allow generous timeouts on CI
-          OBSCURAX_TEST_TIMEOUT: 60000
