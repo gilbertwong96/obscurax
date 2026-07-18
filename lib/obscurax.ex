@@ -35,5 +35,21 @@ defmodule Obscurax do
   defdelegate new(opts \\ []), to: Obscurax.Browser
   defdelegate new_page(browser), to: Obscurax.Browser
   defdelegate cookies(browser), to: Obscurax.Browser
-  defdelegate reply_intercept(page, ref, decision), to: Obscurax.Nif
+
+  @doc """
+  Reply to an intercepted request with a decision.
+
+  Call this inside your `{:obscurax_intercept, ref, req}` receive handler:
+
+      :ok = Obscurax.Page.enable_interception(page)
+      receive do
+        {:obscurax_intercept, ref, %{url: url}} ->
+          Obscurax.reply_intercept(page, ref, :continue)
+      end
+  """
+  @spec reply_intercept(Obscurax.Page.t(), reference(), term()) ::
+          :ok | {:error, Obscurax.Error.t()}
+  def reply_intercept(%Obscurax.Page{ref: ref}, intercept_id, decision) do
+    Obscurax.Nif.reply_intercept(ref, intercept_id, decision)
+  end
 end

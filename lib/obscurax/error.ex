@@ -30,11 +30,12 @@ defmodule Obscurax.Error do
           | :internal
 
   @type context :: %{
-          url: String.t() | nil,
-          selector: String.t() | nil,
-          timeout_ms: non_neg_integer() | nil,
-          node_id: non_neg_integer() | nil,
-          expression: String.t() | nil
+          optional(:url) => String.t(),
+          optional(:selector) => String.t(),
+          optional(:timeout_ms) => non_neg_integer(),
+          optional(:node_id) => non_neg_integer(),
+          optional(:expression) => String.t(),
+          optional(atom()) => term()
         }
 
   @type t :: %__MODULE__{

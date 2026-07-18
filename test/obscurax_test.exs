@@ -28,4 +28,22 @@ defmodule ObscuraxTest do
     # the Obscurax module compiles and exports the function.
     assert {:ok, _} = Obscurax.new()
   end
+
+  test "reply_intercept/3 works through the public API" do
+    {:ok, browser} = Obscurax.new()
+    {:ok, page} = Obscurax.Browser.new_page(browser)
+    :ok = Obscurax.Page.enable_interception(page)
+    :ok = Obscurax.Page.goto(page, "https://example.com")
+
+    # Trigger a JS fetch which gets intercepted
+    spawn(fn -> Obscurax.Page.evaluate(page, "fetch('/').then(r => r.status)") end)
+
+    assert_receive {:obscurax_intercept, ref, %{url: url}}, 5_000
+    assert url =~ "example.com"
+
+    # This should work through the public API (extracts .ref from %Page{})
+    assert :ok = Obscurax.reply_intercept(page, ref, :continue)
+
+    Obscurax.Page.close(page)
+  end
 end

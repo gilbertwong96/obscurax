@@ -93,7 +93,7 @@ defmodule Obscurax.PageTest do
   test "element_attribute/3 returns nil for missing attribute", %{page: page} do
     await_goto(page, "https://example.com")
     {:ok, node_id} = Page.query_selector(page, "h1")
-    assert Page.element_attribute(page, node_id, "data-nonexistent") == nil
+    assert Page.element_attribute(page, node_id, "data-nonexistent") == {:ok, nil}
   end
 
   test "element_click/2 clicks an element", %{page: page} do

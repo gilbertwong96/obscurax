@@ -6,6 +6,8 @@ defmodule Obscurax.Callback do
 
   use GenServer
 
+  require Logger
+
   @type kind :: :request | :response
 
   def start_link(page, kind, fun) when kind in [:request, :response] do
@@ -44,17 +46,26 @@ defmodule Obscurax.Callback do
 
   @impl true
   def handle_info({:obscurax_request, _callback_id, req}, %{kind: :request, fun: fun} = state) do
-    fun.(req)
+    safe_dispatch(fun, req)
     {:noreply, state}
   end
 
   def handle_info({:obscurax_response, _callback_id, resp}, %{kind: :response, fun: fun} = state) do
-    fun.(resp)
+    safe_dispatch(fun, resp)
     {:noreply, state}
   end
 
   def handle_info(_msg, state) do
     {:noreply, state}
+  end
+
+  defp safe_dispatch(fun, arg) do
+    fun.(arg)
+  rescue
+    exception ->
+      Logger.error(
+        "Obscurax callback raised: #{Exception.format(:error, exception, __STACKTRACE__)}"
+      )
   end
 
   @impl true

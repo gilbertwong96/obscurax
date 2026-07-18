@@ -137,11 +137,11 @@ defmodule Obscurax.Page do
   end
 
   @spec element_attribute(t(), non_neg_integer(), String.t()) ::
-          {:ok, String.t()} | nil | {:error, Error.t()}
+          {:ok, String.t() | nil} | {:error, Error.t()}
   def element_attribute(%__MODULE__{ref: ref}, node_id, name) do
     case Nif.page_element_attribute(ref, node_id, name) do
       {:ok, value} -> {:ok, value}
-      nil -> nil
+      nil -> {:ok, nil}
       {:error, error} -> {:error, error}
     end
   end

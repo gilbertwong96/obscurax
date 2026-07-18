@@ -88,4 +88,26 @@ defmodule Obscurax.CallbackProcTest do
       Callback.start_link(nil, :invalid, fn _ -> :ok end)
     end
   end
+
+  test "callback survives a raising user function", %{page: page} do
+    parent = self()
+
+    {:ok, cb} =
+      Callback.start_link(page, :request, fn _req ->
+        raise "boom"
+      end)
+
+    # The callback process should survive the raise (try/rescue in handle_info)
+    id = Nif.page_goto(page, "https://example.com")
+
+    receive do
+      {:obscurax_result, ^id, :ok} -> :ok
+    after
+      30_000 -> flunk("timeout")
+    end
+
+    # Process should still be alive
+    assert Process.alive?(cb)
+    GenServer.stop(cb, :shutdown)
+  end
 end

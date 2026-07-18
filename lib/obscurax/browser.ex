@@ -67,7 +67,9 @@ defmodule Obscurax.Browser do
 
   @spec cookies(t()) :: Obscurax.CookieStore.t()
   def cookies(%__MODULE__{ref: ref}) do
-    {:ok, store_ref} = Nif.browser_cookies(ref)
-    %Obscurax.CookieStore{ref: store_ref}
+    case Nif.browser_cookies(ref) do
+      {:ok, store_ref} -> %Obscurax.CookieStore{ref: store_ref}
+      {:error, error} -> raise error
+    end
   end
 end

@@ -212,9 +212,10 @@ async fn page_command_loop(
                 name,
                 reply,
             } => {
+                let escaped_name = name.replace('\\', "\\\\").replace('\'', "\\'");
                 let js = format!(
                     "(function(){{var el=globalThis._wrap&&globalThis._wrap({});return el?el.getAttribute('{}'):null;}})()",
-                    node_id, name
+                    node_id, escaped_name
                 );
                 let val = page.evaluate(&js);
                 let result = if val.is_null() {
