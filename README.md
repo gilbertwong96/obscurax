@@ -24,8 +24,6 @@ end
 
 The first `mix compile` takes ~5 minutes because V8 builds from source. Subsequent builds are fast — the V8 artifact is cached by Cargo.
 
-> **Note:** obscurax currently depends on a [fork of obscura](https://github.com/gilbertwong96/obscura/tree/expose-node-id) (`expose-node-id` branch) that exposes `Element::node_id()` for element operations. This will switch back to upstream once the PR is merged.
-
 ## Quick start
 
 ```elixir

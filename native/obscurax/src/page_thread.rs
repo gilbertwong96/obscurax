@@ -158,16 +158,24 @@ async fn page_command_loop(
                 let _ = reply.send(page.content());
             }
             PageCommand::QuerySelector { selector, reply } => {
-                let elem = page.query_selector(&selector);
-                let nid = elem.map(|e| e.node_id());
+                let nid = query_selector_nid(page, &selector);
                 let _ = reply.send(nid);
             }
             PageCommand::WaitForSelector { selector, timeout_ms, reply } => {
-                let res = page
-                    .wait_for_selector(&selector, std::time::Duration::from_millis(timeout_ms))
-                    .await
-                    .map(|e| e.node_id())
-                    .map_err(|e| e.to_string());
+                let start = std::time::Instant::now();
+                let timeout = std::time::Duration::from_millis(timeout_ms);
+                let res = loop {
+                    if let Some(nid) = query_selector_nid(page, &selector) {
+                        break Ok(nid);
+                    }
+                    if start.elapsed() > timeout {
+                        break Err(format!(
+                            "wait_for_selector({}) timed out after {}ms",
+                            selector, timeout_ms
+                        ));
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                };
                 let _ = reply.send(res);
             }
             PageCommand::Settle { max_ms, reply } => {
@@ -286,4 +294,20 @@ async fn page_command_loop(
             }
         }
     }
+}
+
+/// Query a DOM node id by CSS selector, mirroring obscura's internal
+/// query_selector JS. Returns None if no element matches.
+///
+/// This inlines the JS that obscura's `Element` wrapper runs so we never
+/// touch the `Element` struct (whose `node_id` field is private upstream).
+fn query_selector_nid(page: &mut obscura::Page, selector: &str) -> Option<u64> {
+    let escaped = selector.replace('\\', "\\\\").replace('\'', "\\'");
+    let js = format!(
+        "(function() {{ var el = document.querySelector('{}'); return el ? el._nid : null; }})()",
+        escaped
+    );
+    let val = page.evaluate(&js);
+    val.as_u64()
+        .or_else(|| val.as_f64().filter(|f| f.is_finite() && *f >= 0.0).map(|f| f as u64))
 }

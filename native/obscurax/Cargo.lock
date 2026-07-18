@@ -1352,7 +1352,7 @@ dependencies = [
 [[package]]
 name = "obscura"
 version = "0.1.0"
-source = "git+https://github.com/gilbertwong96/obscura.git?branch=expose-node-id#b6a0b6a5d0c3fdee84b4aef59c41229ad5226251"
+source = "git+https://github.com/h4ckf0r0day/obscura.git?rev=b2e4bb49#b2e4bb49a7723619527fd0cbb9f2c2acbc58f851"
 dependencies = [
  "anyhow",
  "obscura-browser",
@@ -1367,7 +1367,7 @@ dependencies = [
 [[package]]
 name = "obscura-browser"
 version = "0.1.0"
-source = "git+https://github.com/gilbertwong96/obscura.git?branch=expose-node-id#b6a0b6a5d0c3fdee84b4aef59c41229ad5226251"
+source = "git+https://github.com/h4ckf0r0day/obscura.git?rev=b2e4bb49#b2e4bb49a7723619527fd0cbb9f2c2acbc58f851"
 dependencies = [
  "anyhow",
  "base64",
@@ -1385,7 +1385,7 @@ dependencies = [
 [[package]]
 name = "obscura-dom"
 version = "0.1.0"
-source = "git+https://github.com/gilbertwong96/obscura.git?branch=expose-node-id#b6a0b6a5d0c3fdee84b4aef59c41229ad5226251"
+source = "git+https://github.com/h4ckf0r0day/obscura.git?rev=b2e4bb49#b2e4bb49a7723619527fd0cbb9f2c2acbc58f851"
 dependencies = [
  "cssparser",
  "html5ever",
@@ -1400,7 +1400,7 @@ dependencies = [
 [[package]]
 name = "obscura-js"
 version = "0.1.0"
-source = "git+https://github.com/gilbertwong96/obscura.git?branch=expose-node-id#b6a0b6a5d0c3fdee84b4aef59c41229ad5226251"
+source = "git+https://github.com/h4ckf0r0day/obscura.git?rev=b2e4bb49#b2e4bb49a7723619527fd0cbb9f2c2acbc58f851"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1431,7 +1431,7 @@ dependencies = [
 [[package]]
 name = "obscura-net"
 version = "0.1.0"
-source = "git+https://github.com/gilbertwong96/obscura.git?branch=expose-node-id#b6a0b6a5d0c3fdee84b4aef59c41229ad5226251"
+source = "git+https://github.com/h4ckf0r0day/obscura.git?rev=b2e4bb49#b2e4bb49a7723619527fd0cbb9f2c2acbc58f851"
 dependencies = [
  "async-trait",
  "encoding_rs",
