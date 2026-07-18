@@ -9,7 +9,7 @@ defmodule Obscurax.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
-      test_coverage: [summary: [threshold: 35]]
+      test_coverage: [summary: [threshold: 80], ignore_modules: [Obscurax.Nif]]
     ]
   end
 

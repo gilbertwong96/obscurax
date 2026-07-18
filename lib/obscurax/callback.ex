@@ -9,7 +9,9 @@ defmodule Obscurax.Callback do
   @type kind :: :request | :response
 
   def start_link(page, kind, fun) when kind in [:request, :response] do
-    GenServer.start_link(__MODULE__, {page, kind, fun})
+    # Use start/3 (not start_link/3) so that an init failure (e.g. page closed)
+    # returns {:error, reason} to the caller instead of crashing the caller.
+    GenServer.start(__MODULE__, {page, kind, fun})
   end
 
   @impl true
@@ -17,12 +19,27 @@ defmodule Obscurax.Callback do
     callback_id = System.unique_integer([:positive])
     callback_pid = self()
 
-    case kind do
-      :request -> :ok = Obscurax.Nif.page_on_request(page, callback_id, callback_pid)
-      :response -> :ok = Obscurax.Nif.page_on_response(page, callback_id, callback_pid)
-    end
+    case register_callback(page, kind, callback_id, callback_pid) do
+      :ok ->
+        {:ok, %{page: page, kind: kind, fun: fun, callback_id: callback_id}}
 
-    {:ok, %{page: page, kind: kind, fun: fun, callback_id: callback_id}}
+      {:error, error} ->
+        {:stop, error}
+    end
+  end
+
+  defp register_callback(page, :request, callback_id, callback_pid) do
+    case Obscurax.Nif.page_on_request(page, callback_id, callback_pid) do
+      :ok -> :ok
+      {:error, _} = error -> error
+    end
+  end
+
+  defp register_callback(page, :response, callback_id, callback_pid) do
+    case Obscurax.Nif.page_on_response(page, callback_id, callback_pid) do
+      :ok -> :ok
+      {:error, _} = error -> error
+    end
   end
 
   @impl true

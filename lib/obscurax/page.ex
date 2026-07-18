@@ -176,6 +176,9 @@ defmodule Obscurax.Page do
       {:ok, pid} ->
         {:ok, pid}
 
+      {:error, %Error{} = error} ->
+        {:error, error}
+
       {:error, _} ->
         {:error, Error.exception(kind: :internal, message: "callback start failed", context: %{})}
     end
@@ -186,6 +189,9 @@ defmodule Obscurax.Page do
     case Obscurax.Callback.start_link(ref, :response, fun) do
       {:ok, pid} ->
         {:ok, pid}
+
+      {:error, %Error{} = error} ->
+        {:error, error}
 
       {:error, _} ->
         {:error, Error.exception(kind: :internal, message: "callback start failed", context: %{})}

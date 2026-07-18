@@ -74,4 +74,18 @@ defmodule Obscurax.CallbackProcTest do
 
     refute_received {:request, _}
   end
+
+  test "handle_info ignores unexpected messages", %{page: page} do
+    {:ok, cb} = Callback.start_link(page, :request, fn _ -> :ok end)
+    send(cb, {:unexpected, :message})
+    # Process should still be alive — the catch-all handle_info ignores it
+    assert Process.alive?(cb)
+    GenServer.stop(cb, :shutdown)
+  end
+
+  test "start_link with invalid kind raises ArgumentError" do
+    assert_raise FunctionClauseError, fn ->
+      Callback.start_link(nil, :invalid, fn _ -> :ok end)
+    end
+  end
 end
