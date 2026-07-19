@@ -97,7 +97,7 @@ Not supported (no rusty_v8 prebuilt binaries): musl, riscv64, windows-gnu. Intel
 - Tests hit real network (`https://example.com`) — no local test server
 - 80 tests, 80% coverage threshold enforced
 - The `[error]` log from "callback survives a raising user function" test is suppressed via `capture_log`
-- `Obscurax.Nif` module excluded from coverage (it's just NIF stubs)
+- The Nif module is excluded from coverage (NIF stubs)
 
 ## File Layout
 

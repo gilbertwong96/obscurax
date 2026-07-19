@@ -16,7 +16,8 @@ defmodule Obscurax.MixProject do
       aliases: aliases(),
       package: package(),
       description: description(),
-      test_coverage: [summary: [threshold: 80], ignore_modules: [Obscurax.Nif]]
+      test_coverage: [summary: [threshold: 80], ignore_modules: [Obscurax.Nif]],
+      docs: docs()
     ]
   end
 
@@ -59,6 +60,19 @@ defmodule Obscurax.MixProject do
 
   defp description do
     "Elixir binding for the obscura headless browser engine"
+  end
+
+  defp docs do
+    [
+      main: "Obscurax",
+      source_url: @source_url,
+      source_ref: "v#{@version}",
+      extras: ["README.md", "CHANGELOG.md", "LICENSE", "AGENTS.md"],
+      groups_for_modules: [
+        API: [Obscurax, Obscurax.Browser, Obscurax.Page, Obscurax.CookieStore],
+        Internal: [Obscurax.Callback, Obscurax.Error]
+      ]
+    ]
   end
 
   defp package do
