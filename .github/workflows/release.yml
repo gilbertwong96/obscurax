@@ -1,17 +1,6 @@
 name: Precompile NIFs
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "native/**"
-      - ".github/workflows/release.yml"
-    tags:
-      - "*"
-  pull_request:
-    paths:
-      - ".github/workflows/release.yml"
   workflow_dispatch:
 
 jobs:
@@ -74,25 +63,21 @@ jobs:
           name: ${{ steps.build-crate.outputs.file-name }}
           path: ${{ steps.build-crate.outputs.file-path }}
 
-      - name: Publish to GitHub release
-        uses: softprops/action-gh-release@v3
-        with:
-          files: ${{ steps.build-crate.outputs.file-path }}
-        if: startsWith(github.ref, 'refs/tags/')
-
   generate-checksum:
     name: Generate checksum
     needs: build_release
-    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
-    env:
-      OBSCURAX_BUILD: "true"
-      MIX_ENV: dev
 
     steps:
       - uses: actions/checkout@v5
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
 
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
@@ -106,30 +91,30 @@ jobs:
       - name: Install Linux build deps
         run: sudo apt-get update && sudo apt-get install -y cmake
 
-      - name: Install deps
-        run: mix deps.get
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Generate checksum file
+      - name: Generate checksum
+        env:
+          OBSCURAX_BUILD: "true"
+          MIX_ENV: dev
         run: |
+          mix deps.get
           mkdir -p priv/native
           cp artifacts/*.tar.gz priv/native/ 2>/dev/null || true
           mix rustler_precompiled.download Obscurax.Nif --only-local --all
 
-      - name: Commit checksum file
+      - name: Create tag
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add checksum-*.exs
-          git commit -m "chore: update precompiled NIF checksums for ${{ github.ref_name }}"
-          git push
+          git commit -m "chore: update precompiled NIF checksums for v${{ env.PROJECT_VERSION }}"
+          git tag v${{ env.PROJECT_VERSION }}
+          git push origin main --tags
 
-      - name: Upload checksum to release
+      - name: Upload to GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          files: checksum-*.exs
+          tag_name: v${{ env.PROJECT_VERSION }}
+          name: v${{ env.PROJECT_VERSION }}
+          files: |
+            artifacts/*.tar.gz
+            checksum-*.exs
