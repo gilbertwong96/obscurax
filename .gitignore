@@ -28,6 +28,3 @@ obscurax-*.tar
 # Ignore Rust build artifacts.
 /native/obscurax/target/
 
-# Ignore the checksum file for Rustler precompiled
-checksum-*.exs
-
