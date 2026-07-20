@@ -87,6 +87,9 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    env:
+      OBSCURAX_BUILD: "true"
+      MIX_ENV: dev
 
     steps:
       - uses: actions/checkout@v5
@@ -96,6 +99,12 @@ jobs:
         with:
           otp-version: "29"
           elixir-version: "1.20"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux build deps
+        run: sudo apt-get update && sudo apt-get install -y cmake
 
       - name: Install deps
         run: mix deps.get
