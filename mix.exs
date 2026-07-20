@@ -88,6 +88,7 @@ defmodule Obscurax.MixProject do
         checksum-*.exs
         mix.exs
         README.md
+        CHANGELOG.md
         LICENSE
       ),
       licenses: ["MIT"],
