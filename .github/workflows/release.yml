@@ -73,38 +73,43 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Extract crate information
+        shell: bash
+        run: |
+          echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
+
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          otp-version: "29"
-          elixir-version: "1.20"
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Linux build deps
-        run: sudo apt-get update && sudo apt-get install -y cmake
-
       - name: Generate checksum
-        env:
-          OBSCURAX_BUILD: "true"
-          MIX_ENV: dev
         run: |
-          mix deps.get
-          mkdir -p priv/native
-          cp artifacts/*.tar.gz priv/native/ 2>/dev/null || true
-          mix rustler_precompiled.download Obscurax.Nif --only-local --all
+          # Compute SHA-256 checksums for each NIF artifact
+          CHECKSUM_FILE="checksum-Elixir.Obscurax.Nif.exs"
+          echo "%{" > "$CHECKSUM_FILE"
+          first=true
+          for f in artifacts/*.tar.gz; do
+            filename=$(basename "$f")
+            hash=$(sha256sum "$f" | awk '{print $1}')
+            if [ "$first" = true ]; then
+              first=false
+            else
+              echo "," >> "$CHECKSUM_FILE"
+            fi
+            printf '  "%s" => "sha256:%s"' "$filename" "$hash" >> "$CHECKSUM_FILE"
+          done
+          echo "" >> "$CHECKSUM_FILE"
+          echo "}" >> "$CHECKSUM_FILE"
+          cat "$CHECKSUM_FILE"
 
       - name: Create tag
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git pull origin main
           git add checksum-*.exs
           git commit -m "chore: update precompiled NIF checksums for v${{ env.PROJECT_VERSION }}"
           git tag v${{ env.PROJECT_VERSION }}
