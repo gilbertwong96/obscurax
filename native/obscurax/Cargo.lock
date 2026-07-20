@@ -1472,7 +1472,7 @@ dependencies = [
 [[package]]
 name = "obscura"
 version = "0.1.0"
-source = "git+https://github.com/gilbertwong96/obscura.git?branch=upgrade-deno-core#0621f57b71aef790a5fc2daaf6fbe6ccb25742c9"
+source = "git+https://github.com/gilbertwong96/obscura.git?branch=upgrade-deno-core#425f2cc53e7a0ebe545cfb9808fa41bbe7f99952"
 dependencies = [
  "anyhow",
  "obscura-browser",
@@ -1487,7 +1487,7 @@ dependencies = [
 [[package]]
 name = "obscura-browser"
 version = "0.1.0"
-source = "git+https://github.com/gilbertwong96/obscura.git?branch=upgrade-deno-core#0621f57b71aef790a5fc2daaf6fbe6ccb25742c9"
+source = "git+https://github.com/gilbertwong96/obscura.git?branch=upgrade-deno-core#425f2cc53e7a0ebe545cfb9808fa41bbe7f99952"
 dependencies = [
  "anyhow",
  "base64",
@@ -1505,7 +1505,7 @@ dependencies = [
 [[package]]
 name = "obscura-dom"
 version = "0.1.0"
-source = "git+https://github.com/gilbertwong96/obscura.git?branch=upgrade-deno-core#0621f57b71aef790a5fc2daaf6fbe6ccb25742c9"
+source = "git+https://github.com/gilbertwong96/obscura.git?branch=upgrade-deno-core#425f2cc53e7a0ebe545cfb9808fa41bbe7f99952"
 dependencies = [
  "cssparser",
  "html5ever",
@@ -1520,7 +1520,7 @@ dependencies = [
 [[package]]
 name = "obscura-js"
 version = "0.1.0"
-source = "git+https://github.com/gilbertwong96/obscura.git?branch=upgrade-deno-core#0621f57b71aef790a5fc2daaf6fbe6ccb25742c9"
+source = "git+https://github.com/gilbertwong96/obscura.git?branch=upgrade-deno-core#425f2cc53e7a0ebe545cfb9808fa41bbe7f99952"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1551,7 +1551,7 @@ dependencies = [
 [[package]]
 name = "obscura-net"
 version = "0.1.0"
-source = "git+https://github.com/gilbertwong96/obscura.git?branch=upgrade-deno-core#0621f57b71aef790a5fc2daaf6fbe6ccb25742c9"
+source = "git+https://github.com/gilbertwong96/obscura.git?branch=upgrade-deno-core#425f2cc53e7a0ebe545cfb9808fa41bbe7f99952"
 dependencies = [
  "async-trait",
  "encoding_rs",
