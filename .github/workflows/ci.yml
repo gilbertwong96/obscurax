@@ -72,7 +72,15 @@ jobs:
 
       - name: Post coverage to Codecov
         if: runner.os == 'Linux'
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./cover/excoveralls.json
-          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [ -z "$CODECOV_TOKEN" ]; then
+            echo "::notice::CODECOV_TOKEN not set - skipping Codecov upload."
+            echo "Add it at https://codecov.io/gh/gilbertwong96/obscurax"
+            echo "to enable the coverage badge."
+            exit 0
+          fi
+          curl -Os https://uploader.codecov.io/latest/linux/codecov
+          chmod +x codecov
+          ./codecov --token "$CODECOV_TOKEN" --file ./cover/excoveralls.json
