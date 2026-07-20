@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/gilbertwong96/obscurax/actions/workflows/ci.yml/badge.svg)](https://github.com/gilbertwong96/obscurax/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/gilbertwong96/obscurax/graph/badge.svg)](https://codecov.io/gh/gilbertwong96/obscurax)
+[![Hex.pm](https://img.shields.io/hexpm/v/obscurax.svg)](https://hex.pm/packages/obscurax)
 [![Elixir](https://img.shields.io/badge/elixir-1.18+-purple.svg)](https://elixir-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
@@ -11,21 +12,21 @@ Obscurax wraps the full obscura API — browser launch, page navigation, V8 Java
 
 ## Installation
 
-The package is not on Hex yet. Add it as a git dependency:
+Add `obscurax` to your `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:obscurax, git: "https://github.com/gilbertwong96/obscurax.git", branch: "main"}
+    {:obscurax, "~> 0.1.0"}
   ]
 end
 ```
 
 ### Build requirements
 
-- **Rust 1.91+** ([rustup](https://rustup.rs)) — only needed for `:force_build` or local development. A `rust-toolchain.toml` is included so rustup automatically installs the correct version.
+- **Elixir 1.18+** / **OTP 26+**
+- **Rust 1.91+** ([rustup](https://rustup.rs)) — only needed for `OBSCURAX_BUILD=true` or local development. A `rust-toolchain.toml` is included so rustup automatically installs the correct version.
 - **C++ compiler** — clang/gcc on Linux, Xcode Command Line Tools on macOS, MSVC on Windows (required when building from source)
-- **git** — to fetch obscura as a Cargo dependency
 
 By default, Obscurax downloads a precompiled NIF at compile time — no Rust toolchain required. The precompiled binaries are hosted on [GitHub Releases](https://github.com/gilbertwong96/obscurax/releases) and verified with SHA-256 checksums.
 
