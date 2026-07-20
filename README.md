@@ -1,5 +1,10 @@
 # Obscurax
 
+[![CI](https://github.com/gilbertwong96/obscurax/actions/workflows/ci.yml/badge.svg)](https://github.com/gilbertwong96/obscurax/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/gilbertwong96/obscurax/graph/badge.svg)](https://codecov.io/gh/gilbertwong96/obscurax)
+[![Elixir](https://img.shields.io/badge/elixir-1.18+-purple.svg)](https://elixir-lang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 Elixir binding for the [obscura](https://github.com/h4ckf0r0day/obscura) headless browser engine, built with [Rustler](https://github.com/rusterlium/rustler).
 
 Obscurax wraps the full obscura API — browser launch, page navigation, V8 JavaScript evaluation, element operations, request/response observers, and request interception — behind a synchronous-feeling Elixir API. Each page runs on its own OS thread with a dedicated V8 isolate, so multiple pages execute JavaScript in true parallel.

@@ -16,7 +16,7 @@ defmodule Obscurax.MixProject do
       aliases: aliases(),
       package: package(),
       description: description(),
-      test_coverage: [summary: [threshold: 80], ignore_modules: [Obscurax.Nif]],
+      test_coverage: [tool: ExCoveralls],
       docs: docs()
     ]
   end
@@ -34,6 +34,7 @@ defmodule Obscurax.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_dna, "~> 1.5", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      {:excoveralls, "~> 0.18", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:reach, "~> 2.7", only: [:dev, :test], runtime: false},
@@ -53,7 +54,7 @@ defmodule Obscurax.MixProject do
         "dialyzer",
         "ex_dna",
         "reach.check --dead-code --smells",
-        "test --cover"
+        "coveralls.json"
       ]
     ]
   end

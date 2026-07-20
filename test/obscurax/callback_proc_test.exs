@@ -92,22 +92,22 @@ defmodule Obscurax.CallbackProcTest do
   end
 
   test "callback survives a raising user function", %{page: page} do
-    {:ok, cb} =
-      Callback.start_link(page, :request, fn _req ->
-        raise "boom"
-      end)
+    ExUnit.CaptureLog.capture_log(fn ->
+      {:ok, cb} =
+        Callback.start_link(page, :request, fn _req ->
+          raise "boom"
+        end)
 
-    # The callback process should survive the raise (try/rescue in handle_info)
-    id = Nif.page_goto(page, "https://example.com")
+      id = Nif.page_goto(page, "https://example.com")
 
-    receive do
-      {:obscurax_result, ^id, :ok} -> :ok
-    after
-      30_000 -> flunk("timeout")
-    end
+      receive do
+        {:obscurax_result, ^id, :ok} -> :ok
+      after
+        30_000 -> flunk("timeout")
+      end
 
-    # Process should still be alive
-    assert Process.alive?(cb)
-    GenServer.stop(cb, :shutdown)
+      assert Process.alive?(cb)
+      GenServer.stop(cb, :shutdown)
+    end)
   end
 end
