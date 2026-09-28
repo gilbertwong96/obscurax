@@ -47,18 +47,10 @@ fn kind_atom(kind: &str) -> Atom {
 }
 
 impl ObscuraxError {
-    pub fn from_obscura(e: &obscura::Error) -> Self {
-        let (kind, message) = match e {
-            obscura::Error::Navigation(s) => ("navigation", s.clone()),
-            obscura::Error::JsEval(s) => ("js_eval", s.clone()),
-            obscura::Error::Timeout(s) => ("timeout", s.clone()),
-            obscura::Error::ElementNotFound(s) => ("element_not_found", s.clone()),
-            obscura::Error::NoPage => ("no_page", "no page session".to_string()),
-            obscura::Error::Internal(e) => ("internal", e.to_string()),
-        };
+    pub fn internal(message: impl Into<String>) -> Self {
         ObscuraxError {
-            kind: kind_atom(kind),
-            message,
+            kind: kind_atom("internal"),
+            message: message.into(),
             context: ErrorContext::empty(),
         }
     }

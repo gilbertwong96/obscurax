@@ -1,14 +1,17 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use obscura::Browser;
+use obscura_browser::BrowserContext;
 use rustler::{Encoder, Env, NifResult, Resource, ResourceArc, Term};
 
 use crate::atoms;
-use crate::error::nif_error;
 use crate::page_thread::spawn_page_thread;
 
+/// A launched browser. Holds the base context only as a template: each page
+/// clones it into its own context so no two page runtimes share an HTTP
+/// connection pool.
 pub struct BrowserHandle {
-    pub browser: Arc<Browser>,
+    pub context: Arc<BrowserContext>,
 }
 
 #[rustler::resource_impl]
@@ -32,32 +35,32 @@ fn map_get_string(term: Term, key: &str) -> Option<String> {
     val.decode::<String>().ok()
 }
 
-#[rustler::nif]
+// Building the context sets up the cookie jar, robots cache and TLS/env config,
+// so keep it off a normal BEAM scheduler.
+#[rustler::nif(schedule = "DirtyCpu")]
 pub fn browser_new<'a>(env: Env<'a>, opts: Term<'a>) -> NifResult<Term<'a>> {
     let stealth = map_get_bool(opts, "stealth");
     let proxy = map_get_string(opts, "proxy");
     let user_agent = map_get_string(opts, "user_agent");
     let storage_dir = map_get_string(opts, "storage_dir");
 
-    let config = obscura::BrowserConfig {
-        stealth,
-        proxy,
-        user_agent,
-        storage_dir: storage_dir.map(std::path::PathBuf::from),
+    let context = match storage_dir {
+        Some(dir) => BrowserContext::with_storage_full(
+            "obscurax".to_string(),
+            proxy,
+            stealth,
+            user_agent,
+            Some(PathBuf::from(dir)),
+        ),
+        None => {
+            BrowserContext::with_full_options("obscurax".to_string(), proxy, stealth, user_agent)
+        }
     };
 
-    match Browser::build(config) {
-        Ok(browser) => {
-            let handle = ResourceArc::new(BrowserHandle {
-                browser: Arc::new(browser),
-            });
-            Ok((atoms::ok(), handle).encode(env))
-        }
-        Err(e) => Err(rustler::Error::Term(Box::new(nif_error(
-            "internal",
-            e.to_string(),
-        )))),
-    }
+    let handle = ResourceArc::new(BrowserHandle {
+        context: Arc::new(context),
+    });
+    Ok((atoms::ok(), handle).encode(env))
 }
 
 #[rustler::nif]
@@ -66,7 +69,7 @@ pub fn browser_new_page<'a>(
     handle: ResourceArc<BrowserHandle>,
     pid: rustler::LocalPid,
 ) -> NifResult<Term<'a>> {
-    match spawn_page_thread(handle.browser.clone(), pid) {
+    match spawn_page_thread(handle.context.clone(), pid) {
         Ok(page) => {
             let arc = ResourceArc::new(page);
             Ok((atoms::ok(), arc).encode(env))
@@ -80,7 +83,8 @@ pub fn browser_cookies<'a>(
     env: Env<'a>,
     handle: ResourceArc<BrowserHandle>,
 ) -> NifResult<Term<'a>> {
-    let store = handle.browser.cookies();
-    let arc = ResourceArc::new(crate::cookie::CookieStoreHandle::new(store));
+    let arc = ResourceArc::new(crate::cookie::CookieStoreHandle::new(
+        handle.context.cookie_jar.clone(),
+    ));
     Ok((atoms::ok(), arc).encode(env))
 }

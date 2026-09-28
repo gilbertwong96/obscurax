@@ -45,6 +45,28 @@ defmodule Obscurax.CallbackTest do
     :ok = Nif.reply_intercept(page, ref, :continue)
   end
 
+  test "reply_intercept {:fulfill, ...} delivers the mocked status and body",
+       %{page: page} do
+    :ok = Nif.page_enable_interception(page, self())
+
+    await_goto(page, "https://example.com")
+
+    {:ok, _} =
+      Nif.page_evaluate(
+        page,
+        "globalThis.__p = fetch('/mocked')" <>
+          ".then(r => r.text().then(t => { globalThis.__r = r.status + ':' + t }))"
+      )
+
+    assert_receive {:obscurax_intercept, ref, %{url: url}}, 5_000
+    assert url =~ "mocked"
+
+    :ok = Nif.reply_intercept(page, ref, {:fulfill, 200, %{}, "mocked-body"})
+
+    :ok = Nif.page_settle(page, 2_000)
+    assert {:ok, "200:mocked-body"} = Nif.page_evaluate(page, "globalThis.__r")
+  end
+
   test "on_response fires a message for page responses", %{page: page} do
     :ok = Nif.page_on_response(page, 1, self())
 

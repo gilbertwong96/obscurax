@@ -4,17 +4,20 @@
     clippy::match_single_binding
 )]
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread;
 
-use obscura::Browser;
+use obscura_browser::{BrowserContext, Page as InnerPage, WaitUntil};
+use obscura_net::{ObscuraHttpClient, RequestCallback, RequestInfo, Response, ResponseCallback};
 use rustler::{Encoder, LocalPid, Resource};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::atoms;
 use crate::callback::InterceptRegistry;
 use crate::error::ObscuraxError;
+
+static NEXT_PAGE_ID: AtomicU64 = AtomicU64::new(1);
 
 pub enum PageCommand {
     Goto {
@@ -101,8 +104,36 @@ pub struct PageHandle {
 #[rustler::resource_impl]
 impl Resource for PageHandle {}
 
+/// Build the context for a single page.
+///
+/// Every page gets its own `ObscuraHttpClient`, and therefore its own
+/// connection pool. Hyper drives each pooled connection with a task on the
+/// runtime that created it, and each page's runtime is a short-lived
+/// `current_thread` one, so a pool shared across page runtimes would let
+/// `Page.close/1` drop a runtime that still backs a sibling page's connection
+/// (surfacing as `runtime dropped the dispatch task`). The cookie jar and
+/// robots cache stay browser-wide.
+fn page_context(base: &BrowserContext, page_id: String) -> Arc<BrowserContext> {
+    let mut context = base.isolated_copy(page_id, false);
+
+    let mut client = ObscuraHttpClient::with_full_options(
+        base.cookie_jar.clone(),
+        base.proxy_url.as_deref(),
+        base.allow_private_network,
+    );
+    client.block_trackers = base.stealth;
+    if let Ok(mut user_agent) = client.user_agent.try_write() {
+        *user_agent = base.user_agent.clone();
+    }
+
+    context.cookie_jar = base.cookie_jar.clone();
+    context.robots_cache = base.robots_cache.clone();
+    context.http_client = Arc::new(client);
+    Arc::new(context)
+}
+
 pub fn spawn_page_thread(
-    browser: Arc<Browser>,
+    base_context: Arc<BrowserContext>,
     pid: LocalPid,
 ) -> Result<PageHandle, Box<ObscuraxError>> {
     let (tx, rx) = mpsc::channel::<PageCommand>(64);
@@ -114,6 +145,11 @@ pub fn spawn_page_thread(
     thread::Builder::new()
         .name("obscurax-page".to_string())
         .spawn(move || {
+            // REQUIRED: current_thread, never multi_thread. deno_unsync masks
+            // V8's !Send isolate futures as Send and relies on this runtime
+            // keeping them on one thread. A multi-thread runtime lets them
+            // migrate between workers -- a debug_assert in deno_unsync, but
+            // silent unsoundness once the assert is compiled out in release.
             let rt = match tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
@@ -124,14 +160,12 @@ pub fn spawn_page_thread(
                     return;
                 }
             };
+            // The isolate is built inside the runtime, as the facade's async
+            // new_page did, because its construction needs a runtime context.
             rt.block_on(async move {
-                let mut page = match browser.new_page().await {
-                    Ok(p) => p,
-                    Err(_) => {
-                        closed_clone.store(true, Ordering::SeqCst);
-                        return;
-                    }
-                };
+                let page_id = format!("page-{}", NEXT_PAGE_ID.fetch_add(1, Ordering::Relaxed));
+                let context = page_context(&base_context, page_id.clone());
+                let mut page = InnerPage::new(page_id, context);
                 page_command_loop(&mut page, rx, registry_clone).await;
             });
         })
@@ -147,14 +181,14 @@ pub fn spawn_page_thread(
 
 #[allow(clippy::too_many_lines)]
 async fn page_command_loop(
-    page: &mut obscura::Page,
+    page: &mut InnerPage,
     mut rx: mpsc::Receiver<PageCommand>,
     intercept_registry: Arc<InterceptRegistry>,
 ) {
     while let Some(cmd) = rx.recv().await {
         match cmd {
             PageCommand::Goto { url, id, pid } => {
-                let res = page.goto(&url).await;
+                let res = page.navigate_with_wait(&url, WaitUntil::Load).await;
                 let mut env = rustler::OwnedEnv::new();
                 let _ = env.send_and_clear(&pid, |env| match res {
                     Ok(()) => (atoms::obscurax_result(), id, atoms::ok()).encode(env),
@@ -164,14 +198,14 @@ async fn page_command_loop(
                 });
             }
             PageCommand::Url { reply } => {
-                let _ = reply.send(page.url());
+                let _ = reply.send(page.url_string());
             }
             PageCommand::Evaluate { expr, reply } => {
                 let val = page.evaluate(&expr);
                 let _ = reply.send(val);
             }
             PageCommand::Content { reply } => {
-                let _ = reply.send(page.content());
+                let _ = reply.send(page_html(page));
             }
             PageCommand::QuerySelector { selector, reply } => {
                 let nid = query_selector_nid(page, &selector);
@@ -255,23 +289,22 @@ async fn page_command_loop(
                 pid,
                 reply,
             } => {
-                let cb: obscura::RequestCallback =
-                    std::sync::Arc::new(move |info: &obscura::RequestInfo| {
-                        let info_url = info.url.to_string();
-                        let info_method = info.method.clone();
-                        let info_rt = format!("{:?}", info.resource_type);
-                        let mut env = rustler::OwnedEnv::new();
-                        let _ = env.send_and_clear(&pid, |env| {
-                            let pairs: Vec<(rustler::Term, rustler::Term)> = vec![
-                                (atoms::url().encode(env), info_url.encode(env)),
-                                (atoms::method().encode(env), info_method.encode(env)),
-                                (atoms::resource_type().encode(env), info_rt.encode(env)),
-                            ];
-                            let req_map = rustler::Term::map_from_pairs(env, &pairs)
-                                .unwrap_or(atoms::nil().encode(env));
-                            (atoms::obscurax_request(), callback_id, req_map).encode(env)
-                        });
+                let cb: RequestCallback = std::sync::Arc::new(move |info: &RequestInfo| {
+                    let info_url = info.url.to_string();
+                    let info_method = info.method.clone();
+                    let info_rt = format!("{:?}", info.resource_type);
+                    let mut env = rustler::OwnedEnv::new();
+                    let _ = env.send_and_clear(&pid, |env| {
+                        let pairs: Vec<(rustler::Term, rustler::Term)> = vec![
+                            (atoms::url().encode(env), info_url.encode(env)),
+                            (atoms::method().encode(env), info_method.encode(env)),
+                            (atoms::resource_type().encode(env), info_rt.encode(env)),
+                        ];
+                        let req_map = rustler::Term::map_from_pairs(env, &pairs)
+                            .unwrap_or(atoms::nil().encode(env));
+                        (atoms::obscurax_request(), callback_id, req_map).encode(env)
                     });
+                });
                 let _id = page.on_request(cb);
                 let _ = reply.send(());
             }
@@ -280,8 +313,8 @@ async fn page_command_loop(
                 pid,
                 reply,
             } => {
-                let cb: obscura::ResponseCallback = std::sync::Arc::new(
-                    move |info: &obscura::RequestInfo, resp: &obscura::Response| {
+                let cb: ResponseCallback =
+                    std::sync::Arc::new(move |info: &RequestInfo, resp: &Response| {
                         let info_url = info.url.to_string();
                         let info_method = info.method.clone();
                         let info_rt = format!("{:?}", info.resource_type);
@@ -298,8 +331,7 @@ async fn page_command_loop(
                                 .unwrap_or(atoms::nil().encode(env));
                             (atoms::obscurax_response(), callback_id, msg_map).encode(env)
                         });
-                    },
-                );
+                    });
                 let _id = page.on_response(cb);
                 let _ = reply.send(());
             }
@@ -328,13 +360,21 @@ async fn page_command_loop(
     }
 }
 
+/// Serialize the live DOM, matching what the facade's `content()` returned.
+fn page_html(page: &mut InnerPage) -> String {
+    page.evaluate("document.documentElement.outerHTML")
+        .as_str()
+        .unwrap_or("")
+        .to_string()
+}
+
 /// Query a DOM node id by CSS selector, mirroring obscura's internal
 /// query_selector JS. Returns None if no element matches.
 ///
 /// This inlines the JS that obscura's `Element` wrapper runs so we never
 /// touch the `Element` struct (whose `node_id` field is private upstream).
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-fn query_selector_nid(page: &mut obscura::Page, selector: &str) -> Option<u64> {
+fn query_selector_nid(page: &mut InnerPage, selector: &str) -> Option<u64> {
     let escaped = selector.replace('\\', "\\\\").replace('\'', "\\'");
     let js = format!(
         "(function() {{ var el = document.querySelector('{}'); return el ? el._nid : null; }})()",

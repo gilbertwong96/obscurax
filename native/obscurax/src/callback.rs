@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use obscura::{InterceptResolution, InterceptedRequest};
+use obscura_browser::{InterceptResolution, InterceptedRequest};
 use rustler::Encoder;
 use rustler::LocalPid;
 use rustler::OwnedEnv;

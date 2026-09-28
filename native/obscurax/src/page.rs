@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use obscura_browser::InterceptResolution;
 use rustler::types::tuple::get_tuple;
 use rustler::{Atom, Encoder, Env, NifResult, ResourceArc, Term};
 use tokio::sync::oneshot;
@@ -359,10 +361,10 @@ pub fn reply_intercept<'a>(
     Ok(atoms::ok().encode(env))
 }
 
-fn decode_intercept_decision(term: Term) -> NifResult<obscura::InterceptResolution> {
+fn decode_intercept_decision(term: Term) -> NifResult<InterceptResolution> {
     if let Ok(atom) = Atom::from_term(term) {
         if atom == atoms::continue_() {
-            return Ok(obscura::InterceptResolution::Continue {
+            return Ok(InterceptResolution::Continue {
                 url: None,
                 method: None,
                 headers: None,
@@ -380,15 +382,19 @@ fn decode_intercept_decision(term: Term) -> NifResult<obscura::InterceptResoluti
         let status: u16 = tuple_data[1].decode()?;
         let headers: HashMap<String, String> = tuple_data[2].decode()?;
         let body: String = tuple_data[3].decode()?;
-        return Ok(obscura::InterceptResolution::Fulfill {
+        // Upstream carries both a lossy `body` view and the exact bytes as
+        // `body_base64`; the bootstrap fetch layer prefers the latter. Elixir
+        // supplies UTF-8 text, so base64 of that same text is the exact bytes.
+        return Ok(InterceptResolution::Fulfill {
             status,
             headers,
+            body_base64: BASE64.encode(body.as_bytes()),
             body,
         });
     }
     if tag == atoms::fail() {
         let reason: String = tuple_data[1].decode()?;
-        return Ok(obscura::InterceptResolution::Fail { reason });
+        return Ok(InterceptResolution::Fail { reason });
     }
 
     Err(rustler::Error::RaiseAtom("invalid_intercept_decision"))

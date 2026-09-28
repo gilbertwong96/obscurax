@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+## 0.1.1 - 2026-09-28
+
+### Changed
+
+- Creating a browser no longer blocks a BEAM scheduler.
+
+### Fixed
+
+- Concurrent page navigation could fail intermittently with `error sending request for url` when one page was closed while sibling pages were still navigating (`dispatch task is gone <- runtime dropped the dispatch task`). Each page now has its own HTTP connection pool, so a page's runtime only owns its own connections.
+- `goto/2` error messages no longer repeat the `navigation error:` prefix.
+
 ## v0.1.0 (2026-07-19)
 
 Initial release.
