@@ -17,7 +17,7 @@ Add `obscurax` to your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:obscurax, "~> 0.1.0"}
+    {:obscurax, "~> 0.2.0"}
   ]
 end
 ```

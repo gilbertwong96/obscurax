@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-10-16
+
+### Breaking changes
+
+- `file://` navigation is no longer permitted, so `goto/2` returns `{:error, %Obscurax.Error{kind: :navigation}}` for those URLs and the page stays on `about:blank`. obscura v0.2.4 moved this gate from the CLI to the browser context, where it defaults to disabled, and `Obscurax` does not yet expose the upstream `allow_file_access` option.
+
+### Changed
+
+- Upgraded the bundled browser engine to obscura v0.2.4 (212 upstream commits). Iframe teardown can no longer abort the process during garbage collection, input and page-lifecycle behaviour tracks browsers more closely, and automation waits less on idle polling and CDP replies.
+
+### Security
+
+- Engine hardening carried in obscura v0.2.4: malformed request-interception rewrites and Teredo addresses are rejected by the SSRF gate, `history.pushState()` and `replaceState()` enforce same-origin URLs, and `__Host-` cookies, cookie expiry parsing, and IP-domain matching were tightened.
+
 ## 0.1.1 - 2026-09-28
 
 ### Changed
