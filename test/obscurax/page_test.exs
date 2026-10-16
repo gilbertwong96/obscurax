@@ -1,17 +1,13 @@
 defmodule Obscurax.PageTest do
   use ExUnit.Case, async: true
 
-  alias Obscurax.{Error, Page}
+  alias Obscurax.{Error, Page, TestFixture}
 
   setup do
     {:ok, browser} = Obscurax.Browser.new()
     {:ok, page} = Obscurax.Browser.new_page(browser)
     on_exit(fn -> Page.close(page) end)
     {:ok, page: page}
-  end
-
-  defp await_goto(page, url) do
-    assert :ok = Page.goto(page, url)
   end
 
   # ── Happy path ────────────────────────────────────────────
@@ -27,51 +23,51 @@ defmodule Obscurax.PageTest do
   end
 
   test "evaluate/2 returns JS values", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     assert {:ok, "Example Domain"} = Page.evaluate(page, "document.title")
     assert {:ok, 2} = Page.evaluate(page, "1 + 1")
   end
 
   test "evaluate!/2 returns the value on success", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     assert "Example Domain" = Page.evaluate!(page, "document.title")
   end
 
   test "content/1 returns the page HTML", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     assert {:ok, html} = Page.content(page)
     assert html =~ "Example Domain"
   end
 
   test "query_selector/2 returns a node id", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     assert {:ok, node_id} = Page.query_selector(page, "h1")
     assert is_integer(node_id)
   end
 
   test "query_selector/2 returns nil for missing selector", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     assert {:ok, nil} = Page.query_selector(page, ".nonexistent")
   end
 
   test "wait_for_selector/3 returns a node id", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     assert {:ok, node_id} = Page.wait_for_selector(page, "h1", 5_000)
     assert is_integer(node_id)
   end
 
   test "wait_for_selector!/3 returns a node id on success", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     assert is_integer(Page.wait_for_selector!(page, "h1", 5_000))
   end
 
   test "wait_for_selector/3 times out with Obscurax.Error", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     assert {:error, %Error{kind: :timeout}} = Page.wait_for_selector(page, ".nonexistent", 100)
   end
 
   test "wait_for_selector!/3 raises Obscurax.Error on timeout", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
 
     assert_raise Error, fn ->
       Page.wait_for_selector!(page, ".nonexistent", 100)
@@ -79,31 +75,31 @@ defmodule Obscurax.PageTest do
   end
 
   test "element_text/2 returns text content", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     {:ok, node_id} = Page.query_selector(page, "h1")
     assert {:ok, "Example Domain"} = Page.element_text(page, node_id)
   end
 
   test "element_attribute/3 returns attribute values", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     {:ok, node_id} = Page.query_selector(page, "a")
     assert {:ok, _href} = Page.element_attribute(page, node_id, "href")
   end
 
   test "element_attribute/3 returns nil for missing attribute", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     {:ok, node_id} = Page.query_selector(page, "h1")
     assert Page.element_attribute(page, node_id, "data-nonexistent") == {:ok, nil}
   end
 
   test "element_click/2 clicks an element", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     {:ok, node_id} = Page.query_selector(page, "a")
     assert :ok = Page.element_click(page, node_id)
   end
 
   test "settle/2 returns ok", %{page: page} do
-    await_goto(page, "https://example.com")
+    TestFixture.goto!(page)
     assert :ok = Page.settle(page, 100)
   end
 

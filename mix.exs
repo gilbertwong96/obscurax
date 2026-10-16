@@ -12,6 +12,7 @@ defmodule Obscurax.MixProject do
       version: @version,
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       aliases: aliases(),
       package: package(),
@@ -24,6 +25,9 @@ defmodule Obscurax.MixProject do
   def application do
     [extra_applications: [:logger, :inets, :ssl]]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
     [
