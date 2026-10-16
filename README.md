@@ -6,7 +6,7 @@
 [![Elixir](https://img.shields.io/badge/elixir-1.18+-purple.svg)](https://elixir-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-Elixir binding for the [obscura](https://github.com/h4ckf0r0day/obscura) headless browser engine, built with [Rustler](https://github.com/rusterlium/rustler).
+Elixir binding for the [obscura](https://github.com/h4ckf0r0day/obscura) headless browser engine, built with [Rustler](https://github.com/rusterlium/rustler). The engine is pinned to obscura **v0.2.4** (deno_core 0.412, V8 150.4.0).
 
 Obscurax wraps the full obscura API — browser launch, page navigation, V8 JavaScript evaluation, element operations, request/response observers, and request interception — behind a synchronous-feeling Elixir API. Each page runs on its own OS thread with a dedicated V8 isolate, so multiple pages execute JavaScript in true parallel.
 
@@ -24,7 +24,7 @@ end
 
 ### Build requirements
 
-- **Elixir 1.18+** / **OTP 26+**
+- **Elixir 1.18+** / **OTP 26+** — a `.mise.toml` pins the toolchain used for development (Elixir 1.20.4 / OTP 29.1.2)
 - **Rust 1.91+** ([rustup](https://rustup.rs)) — only needed for `OBSCURAX_BUILD=true` or local development. A `rust-toolchain.toml` is included so rustup automatically installs the correct version.
 - **C++ compiler** — clang/gcc on Linux, Xcode Command Line Tools on macOS, MSVC on Windows (required when building from source)
 
