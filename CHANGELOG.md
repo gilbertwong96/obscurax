@@ -6,11 +6,19 @@
 
 ### Breaking changes
 
-- `file://` navigation is no longer permitted, so `goto/2` returns `{:error, %Obscurax.Error{kind: :navigation}}` for those URLs and the page stays on `about:blank`. obscura v0.2.4 moved this gate from the CLI to the browser context, where it defaults to disabled, and `Obscurax` does not yet expose the upstream `allow_file_access` option.
+- `file://` navigation is disabled unless a browser opts in with `:allow_file_access`. obscura v0.2.4 moved this gate from the CLI to the browser context, where it defaults to disabled, so without the new option `goto/2` returns `{:error, %Obscurax.Error{kind: :navigation}}` for those URLs and the page stays on `about:blank`.
+
+### Added
+
+- `:allow_file_access` option for `Obscurax.Browser.new/1`, which permits `file://` navigation for local HTML testing. A page can never navigate itself from a web origin into `file://`, regardless of this option.
 
 ### Changed
 
 - Upgraded the bundled browser engine to obscura v0.2.4 (212 upstream commits). Iframe teardown can no longer abort the process during garbage collection, input and page-lifecycle behaviour tracks browsers more closely, and automation waits less on idle polling and CDP replies.
+
+### Fixed
+
+- `Obscurax.Browser.new/1` options are now actually applied. The NIF looked them up under binary map keys while the Elixir side sent atoms, so `:stealth`, `:proxy`, `:user_agent`, and `:storage_dir` were silently ignored. Custom user agents and proxies now take effect, and `:storage_dir` now loads and saves cookies.
 
 ### Security
 

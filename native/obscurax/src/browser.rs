@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use obscura_browser::BrowserContext;
-use rustler::{Encoder, Env, NifResult, Resource, ResourceArc, Term};
+use rustler::{Atom, Encoder, Env, NifResult, Resource, ResourceArc, Term};
 
 use crate::atoms;
 use crate::page_thread::spawn_page_thread;
@@ -17,14 +17,17 @@ pub struct BrowserHandle {
 #[rustler::resource_impl]
 impl Resource for BrowserHandle {}
 
-fn map_get_bool(term: Term, key: &str) -> bool {
+// Keys must be atoms. `Term::map_get/2` encodes the key it is given, and a
+// `&str` encodes as a binary, which never matches the atom keys the Elixir side
+// sends — so a `&str` key silently reads as "absent".
+fn map_get_bool(term: Term, key: Atom) -> bool {
     term.map_get(key)
         .ok()
         .and_then(|t| t.decode::<bool>().ok())
         .unwrap_or(false)
 }
 
-fn map_get_string(term: Term, key: &str) -> Option<String> {
+fn map_get_string(term: Term, key: Atom) -> Option<String> {
     let val = term.map_get(key).ok()?;
     if val.is_atom() {
         let atom: rustler::Atom = val.decode().ok()?;
@@ -39,12 +42,13 @@ fn map_get_string(term: Term, key: &str) -> Option<String> {
 // so keep it off a normal BEAM scheduler.
 #[rustler::nif(schedule = "DirtyCpu")]
 pub fn browser_new<'a>(env: Env<'a>, opts: Term<'a>) -> NifResult<Term<'a>> {
-    let stealth = map_get_bool(opts, "stealth");
-    let proxy = map_get_string(opts, "proxy");
-    let user_agent = map_get_string(opts, "user_agent");
-    let storage_dir = map_get_string(opts, "storage_dir");
+    let stealth = map_get_bool(opts, atoms::stealth());
+    let proxy = map_get_string(opts, atoms::proxy());
+    let user_agent = map_get_string(opts, atoms::user_agent());
+    let storage_dir = map_get_string(opts, atoms::storage_dir());
+    let allow_file_access = map_get_bool(opts, atoms::allow_file_access());
 
-    let context = match storage_dir {
+    let mut context = match storage_dir {
         Some(dir) => BrowserContext::with_storage_full(
             "obscurax".to_string(),
             proxy,
@@ -56,6 +60,10 @@ pub fn browser_new<'a>(env: Env<'a>, opts: Term<'a>) -> NifResult<Term<'a>> {
             BrowserContext::with_full_options("obscurax".to_string(), proxy, stealth, user_agent)
         }
     };
+
+    // No obscura constructor accepts this flag, and pages inherit it through
+    // `isolated_copy`, so setting it here covers the whole browser.
+    context.allow_file_access = allow_file_access;
 
     let handle = ResourceArc::new(BrowserHandle {
         context: Arc::new(context),

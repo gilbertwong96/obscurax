@@ -68,6 +68,7 @@ Obscurax.Page.goto!(page, "https://example.com")
 - **Passive observers** — `on_request/2` and `on_response/2` fire messages into a callback process for every network event
 - **Request interception** — pause, inspect, modify, mock, or block requests via `enable_interception/1` and `reply_intercept/3`
 - **Stealth mode** (opt-in) — `Obscurax.Browser.new(stealth: true)` to reduce detection
+- **Local file access** (opt-in) — `Obscurax.Browser.new(allow_file_access: true)` to navigate `file://` URLs, for local HTML testing
 
 ## Concurrency
 

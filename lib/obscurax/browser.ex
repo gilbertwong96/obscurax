@@ -12,6 +12,9 @@ defmodule Obscurax.Browser do
     * `:proxy` — proxy URL string, e.g. `"socks5://127.0.0.1:1080"`
     * `:user_agent` — custom User-Agent header
     * `:storage_dir` — directory for persistent storage
+    * `:allow_file_access` — allow navigation to `file://` URLs, for local HTML
+      testing (default: `false`). A page can never navigate itself from a web
+      origin into `file://`, regardless of this option.
 
   ## Example
 
@@ -32,7 +35,8 @@ defmodule Obscurax.Browser do
       stealth: Keyword.get(opts, :stealth, false),
       proxy: Keyword.get(opts, :proxy),
       user_agent: Keyword.get(opts, :user_agent),
-      storage_dir: Keyword.get(opts, :storage_dir)
+      storage_dir: Keyword.get(opts, :storage_dir),
+      allow_file_access: Keyword.get(opts, :allow_file_access, false)
     }
 
     case Nif.browser_new(opts_map) do

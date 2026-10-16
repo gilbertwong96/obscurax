@@ -21,4 +21,15 @@ defmodule Obscurax.TestFixture do
   @url "data:text/html;base64," <> Base.encode64(@html)
 
   def goto!(page), do: Obscurax.Page.goto!(page, @url)
+
+  @doc """
+  The same markup written to a temp file, as a `file://` URL.
+
+  Used to exercise opt-in local file access.
+  """
+  def file_url do
+    path = Path.join(System.tmp_dir!(), "obscurax_test_fixture.html")
+    File.write!(path, @html)
+    "file://" <> path
+  end
 end

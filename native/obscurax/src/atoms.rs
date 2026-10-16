@@ -29,6 +29,11 @@ rustler::atoms! {
     path,
     secure,
     http_only,
+    stealth,
+    proxy,
+    user_agent,
+    storage_dir,
+    allow_file_access,
 }
 
 use rustler::{Encoder, Env, Term};
