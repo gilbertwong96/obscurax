@@ -62,6 +62,7 @@ defmodule Obscurax.Callback do
   defp safe_dispatch(fun, arg) do
     fun.(arg)
   rescue
+    # reach:disable-next-line bare_rescue -- user callbacks are arbitrary code; log and keep the observer alive
     exception ->
       Logger.error(
         "Obscurax callback raised: #{Exception.format(:error, exception, __STACKTRACE__)}"

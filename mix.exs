@@ -58,7 +58,12 @@ defmodule Obscurax.MixProject do
         "dialyzer",
         "ex_dna",
         "reach.check --dead-code --smells",
-        "coveralls.json"
+        # Coverage runs in its own VM, the way CI does. Reach's effects analysis
+        # loads the project's modules, and :cover then reloads them to
+        # instrument coverage; a NIF module cannot be reloaded (Rustler NIF
+        # libraries do not support upgrade), so doing both in one VM makes the
+        # NIF on_load fail with a spurious "upgrade not supported" warning.
+        "cmd mix coveralls.json"
       ]
     ]
   end
@@ -102,7 +107,9 @@ defmodule Obscurax.MixProject do
 
   def cli do
     [
-      preferred_envs: [ci: :test]
+      # `ci` runs coverage in a nested Mix invocation (see the alias), and
+      # preferred_envs does not propagate to it, so name that task too.
+      preferred_envs: [ci: :test, "coveralls.json": :test]
     ]
   end
 end
