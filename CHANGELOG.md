@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.1 - 2026-10-20
+
 ### Added
 
 - `Obscurax.Page.evaluate_script/2` and `evaluate_script!/2` run a script, await a returned promise, and return `{:error, %Obscurax.Error{kind: :js_eval}}` when JavaScript throws or rejects. A promise that never settles fails after 30s instead of wedging the page thread.
