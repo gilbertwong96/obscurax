@@ -22,6 +22,7 @@ rustler::atoms! {
     url,
     method,
     resource_type,
+    headers,
     status,
     name,
     value,

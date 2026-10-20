@@ -28,6 +28,19 @@ defmodule Obscurax.IntegrationTest do
     end
   end
 
+  # v0.2.5 scopes localStorage to the browser context, so pages of one browser
+  # share it instead of each page getting an incognito store.
+  test "localStorage is shared by pages of one browser", %{browser: browser, page: page} do
+    :ok = Obscurax.Page.goto(page, "https://example.com")
+    assert {:ok, _} = Obscurax.Page.evaluate(page, "localStorage.setItem('k', 'shared')")
+
+    {:ok, other} = Obscurax.Browser.new_page(browser)
+    on_exit(fn -> Obscurax.Page.close(other) end)
+    :ok = Obscurax.Page.goto(other, "https://example.com")
+
+    assert {:ok, "shared"} = Obscurax.Page.evaluate(other, "localStorage.getItem('k')")
+  end
+
   # Navigates over the real network on purpose: this guards the per-page
   # connection pool, which only matters when pages fetch concurrently.
   test "concurrent pages from different processes", %{browser: browser} do

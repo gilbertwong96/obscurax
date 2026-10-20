@@ -162,6 +162,59 @@ pub fn page_settle<'a>(
 }
 
 #[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_evaluate_script<'a>(
+    env: Env<'a>,
+    handle: ResourceArc<PageHandle>,
+    script: String,
+) -> NifResult<Term<'a>> {
+    let script_ctx = script.clone();
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .try_send(PageCommand::EvaluateScript { script, reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    match rx.blocking_recv() {
+        Ok(Ok(val)) => Ok((atoms::ok(), json_to_term(env, &val)).encode(env)),
+        Ok(Err(msg)) => Err(rustler::Error::Term(Box::new(ObscuraxError::js_eval(
+            &script_ctx,
+            msg,
+        )))),
+        Err(_) => Err(page_closed_err()),
+    }
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_content_type<'a>(env: Env<'a>, handle: ResourceArc<PageHandle>) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .try_send(PageCommand::ContentType { reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let content_type = rx.blocking_recv().map_err(|_| page_closed_err())?;
+    Ok((atoms::ok(), content_type).encode(env))
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn page_stop_loading<'a>(env: Env<'a>, handle: ResourceArc<PageHandle>) -> NifResult<Term<'a>> {
+    let (tx, rx) = oneshot::channel();
+    if handle
+        .tx
+        .try_send(PageCommand::StopLoading { reply: tx })
+        .is_err()
+    {
+        return Err(page_closed_err());
+    }
+    let _ = rx.blocking_recv();
+    Ok(atoms::ok().encode(env))
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
 pub fn page_add_preload_script<'a>(
     env: Env<'a>,
     handle: ResourceArc<PageHandle>,

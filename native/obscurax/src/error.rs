@@ -107,7 +107,6 @@ impl ObscuraxError {
         }
     }
 
-    #[allow(dead_code)]
     pub fn js_eval(expression: &str, message: impl Into<String>) -> Self {
         ObscuraxError {
             kind: kind_atom("js_eval"),

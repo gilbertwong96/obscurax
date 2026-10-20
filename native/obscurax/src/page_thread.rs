@@ -19,6 +19,10 @@ use crate::error::ObscuraxError;
 
 static NEXT_PAGE_ID: AtomicU64 = AtomicU64::new(1);
 
+/// Matches obscura's own `DEFAULT_CDP_AWAIT_TIMEOUT_MS`: a script that returns a
+/// promise nobody settles fails instead of wedging the page thread.
+const EVALUATE_SCRIPT_TIMEOUT_MS: u64 = 30_000;
+
 pub enum PageCommand {
     Goto {
         url: String,
@@ -46,6 +50,16 @@ pub enum PageCommand {
     },
     Settle {
         max_ms: u64,
+        reply: oneshot::Sender<()>,
+    },
+    EvaluateScript {
+        script: String,
+        reply: oneshot::Sender<Result<serde_json::Value, String>>,
+    },
+    ContentType {
+        reply: oneshot::Sender<String>,
+    },
+    StopLoading {
         reply: oneshot::Sender<()>,
     },
     AddPreloadScript {
@@ -128,6 +142,12 @@ fn page_context(base: &BrowserContext, page_id: String) -> Arc<BrowserContext> {
 
     context.cookie_jar = base.cookie_jar.clone();
     context.robots_cache = base.robots_cache.clone();
+    // Web Storage and IndexedDB belong to the browser context in obscura 0.2.5:
+    // sharing them keeps a page's data across navigations and visible to its
+    // siblings. `isolated_copy` hands an incognito copy a fresh store, so
+    // without this every page would start empty.
+    context.local_storage = base.local_storage.clone();
+    context.indexed_db = base.indexed_db.clone();
     context.http_client = Arc::new(client);
     Arc::new(context)
 }
@@ -234,6 +254,28 @@ async fn page_command_loop(
             }
             PageCommand::Settle { max_ms, reply } => {
                 page.settle(max_ms).await;
+                let _ = reply.send(());
+            }
+            PageCommand::EvaluateScript { script, reply } => {
+                // The CDP path is the one that awaits a returned promise and
+                // flags a thrown value; `evaluate_script` executes the source
+                // but hands back the promise object itself.
+                let result = match page
+                    .evaluate_for_cdp_with_timeout(&script, true, true, EVALUATE_SCRIPT_TIMEOUT_MS)
+                    .await
+                {
+                    Ok(obj) if obj.thrown => Err(obj.description),
+                    Ok(obj) => Ok(obj.value.unwrap_or(serde_json::Value::Null)),
+                    Err(e) => Err(e),
+                };
+                page.release_object_group();
+                let _ = reply.send(result);
+            }
+            PageCommand::ContentType { reply } => {
+                let _ = reply.send(page.content_type.clone());
+            }
+            PageCommand::StopLoading { reply } => {
+                page.stop_loading();
                 let _ = reply.send(());
             }
             PageCommand::AddPreloadScript { script, reply } => {

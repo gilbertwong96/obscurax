@@ -11,6 +11,7 @@ defmodule Obscurax.Page do
 
       :ok = Obscurax.Page.goto(page, "https://example.com")
       {:ok, title} = Obscurax.Page.evaluate(page, "document.title")
+      {:ok, body} = Obscurax.Page.evaluate_script(page, "fetch('/').then(r => r.text())")
       {:ok, html} = Obscurax.Page.content(page)
 
   ## Element operations
@@ -83,6 +84,59 @@ defmodule Obscurax.Page do
     case evaluate(page, expr) do
       {:ok, value} -> value
       {:error, error} -> raise error
+    end
+  end
+
+  @doc """
+  Evaluate a script, awaiting a returned promise and reporting JavaScript errors.
+
+  Unlike `evaluate/2`, which logs a failure and returns `nil`, this returns
+  `{:error, %Obscurax.Error{kind: :js_eval}}` carrying the engine's message. A
+  returned promise settles before its value is encoded, so asynchronous work
+  can be awaited directly:
+
+      {:ok, title} = Obscurax.Page.evaluate_script(page, "fetch('/').then(r => r.text())")
+  """
+  @spec evaluate_script(t(), String.t()) :: {:ok, term()} | {:error, Error.t()}
+  def evaluate_script(%__MODULE__{ref: ref}, script) do
+    case Nif.page_evaluate_script(ref, script) do
+      {:ok, value} -> {:ok, value}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @spec evaluate_script!(t(), String.t()) :: term()
+  def evaluate_script!(page, script) do
+    case evaluate_script(page, script) do
+      {:ok, value} -> value
+      {:error, error} -> raise error
+    end
+  end
+
+  @doc """
+  The document's MIME type, as exposed to the page as `document.contentType`.
+
+  Empty for `about:blank` and before the first navigation.
+  """
+  @spec content_type(t()) :: {:ok, String.t()} | {:error, Error.t()}
+  def content_type(%__MODULE__{ref: ref}) do
+    case Nif.page_content_type(ref) do
+      {:ok, content_type} -> {:ok, content_type}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Cancel the document load in flight.
+
+  Parser-blocking scripts and pending rendering resources stop too, and the
+  cancelled navigation does not emit a load event.
+  """
+  @spec stop_loading(t()) :: :ok | {:error, Error.t()}
+  def stop_loading(%__MODULE__{ref: ref}) do
+    case Nif.page_stop_loading(ref) do
+      :ok -> :ok
+      {:error, error} -> {:error, error}
     end
   end
 

@@ -69,6 +69,7 @@ pub fn spawn_interception_drain(
             let req_url = req.url.clone();
             let req_method = req.method.clone();
             let req_resource_type = req.resource_type.clone();
+            let req_headers = req.headers.clone();
 
             let mut env = OwnedEnv::new();
             let _ = env.send_and_clear(&pid, |env| {
@@ -79,6 +80,7 @@ pub fn spawn_interception_drain(
                         atoms::resource_type().encode(env),
                         req_resource_type.encode(env),
                     ),
+                    (atoms::headers().encode(env), req_headers.encode(env)),
                 ];
                 let req_map =
                     rustler::Term::map_from_pairs(env, &pairs).unwrap_or(atoms::nil().encode(env));

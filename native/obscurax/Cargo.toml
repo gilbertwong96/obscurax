@@ -9,8 +9,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = { version = "0.38", default-features = false, features = ["serde"] }
-obscura-browser = { git = "https://github.com/h4ckf0r0day/obscura", tag = "v0.2.4" }
-obscura-net = { git = "https://github.com/h4ckf0r0day/obscura", tag = "v0.2.4" }
+obscura-browser = { git = "https://github.com/h4ckf0r0day/obscura", tag = "v0.2.5" }
+obscura-net = { git = "https://github.com/h4ckf0r0day/obscura", tag = "v0.2.5" }
 url = "2"
 tokio = { version = "1", features = ["rt", "sync", "time", "macros"] }
 base64 = "0.22"

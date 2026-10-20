@@ -6,7 +6,7 @@
 [![Elixir](https://img.shields.io/badge/elixir-1.18+-purple.svg)](https://elixir-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-Elixir binding for the [obscura](https://github.com/h4ckf0r0day/obscura) headless browser engine, built with [Rustler](https://github.com/rusterlium/rustler). The engine is pinned to obscura **v0.2.4** (deno_core 0.412, V8 150.4.0).
+Elixir binding for the [obscura](https://github.com/h4ckf0r0day/obscura) headless browser engine, built with [Rustler](https://github.com/rusterlium/rustler). The engine is pinned to obscura **v0.2.5** (deno_core 0.412, V8 150.4.0).
 
 Obscurax drives a real JavaScript engine from Elixir — but not the way a WebDriver binding does. There is no Chrome to install, no driver process to supervise, and no Node or Python in the loop: the engine is a Rust shared library shipped as a precompiled NIF, and every page gets its own OS thread and V8 isolate so pages execute JavaScript genuinely in parallel.
 
@@ -14,7 +14,7 @@ Obscurax drives a real JavaScript engine from Elixir — but not the way a WebDr
 
 | | |
 |---|---|
-| Engine | obscura v0.2.4 — Rust headless browser with V8 150.4.0 embedded |
+| Engine | obscura v0.2.5 — Rust headless browser with V8 150.4.0 embedded |
 | Runtime dependencies | `rustler_precompiled` (that's it) |
 | External browser or driver | none |
 | Elixir / OTP | 1.18+ / OTP 26+ |
@@ -140,6 +140,9 @@ end
 - `Obscurax.Page.goto/3`, `goto!/3` — navigate, with an optional `:timeout` (default 30s)
 - `Obscurax.Page.url/1`, `content/1` — final URL and serialised DOM
 - `Obscurax.Page.evaluate/2`, `evaluate!/2` — run V8 JavaScript and get the value back
+- `Obscurax.Page.evaluate_script/2`, `evaluate_script!/2` — run a script, await a returned promise, and report JavaScript errors as `%Obscurax.Error{kind: :js_eval}` instead of `nil`
+- `Obscurax.Page.content_type/1` — the document MIME type, as `document.contentType` sees it
+- `Obscurax.Page.stop_loading/1` — cancel the document load in flight
 - `Obscurax.Page.add_preload_script/2` — queue a script that runs before the page's own scripts on the next navigation
 - `Obscurax.Page.settle/2` — drive the page's event loop so timers, microtasks, and in-flight fetches settle; returns when idle or after the given deadline
 
@@ -203,7 +206,7 @@ Yes. Each page has its own OS thread and its own V8 isolate, and JavaScript eval
 No. Evaluation runs on dirty CPU schedulers, and each page owns a separate runtime, so unrelated BEAM processes keep running.
 
 **How do I mock or block a request?**
-Call `Obscurax.Page.enable_interception/1`, receive `{:obscurax_intercept, ref, req}`, then call `Obscurax.reply_intercept/3` with `:continue`, `{:fulfill, status, headers, body}`, or `{:fail, reason}`.
+Call `Obscurax.Page.enable_interception/1`, receive `{:obscurax_intercept, ref, req}`, then call `Obscurax.reply_intercept/3` with `:continue`, `{:fulfill, status, headers, body}`, or `{:fail, reason}`. `req.headers` carries the headers the page set on the request itself, such as `fetch(url, {headers: ...})`.
 
 **How are errors reported?**
 Non-bang functions return `{:error, %Obscurax.Error{}}` with a `kind`, a `message`, and a `context` map; bang variants raise the same struct.
@@ -217,7 +220,6 @@ See [CHANGELOG.md](CHANGELOG.md). `0.2.0` moved `file://` navigation behind the 
 ## Current limitations
 
 - The engine is not Chromium. Service workers, native media, and some Web APIs are incomplete, and long-tail rendering behaviour differs from Chrome.
-- IndexedDB can report successful writes without retaining data between transactions.
 - Response bodies are bounded and buffered — there is no incremental network streaming.
 - There are no precompiled binaries for musl, riscv64, or `windows-gnu` (rusty_v8 publishes no builds for them), nor for Intel macOS. Those targets build from source with `OBSCURAX_BUILD=true`.
 

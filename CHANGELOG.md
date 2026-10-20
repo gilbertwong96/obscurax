@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+
+- `Obscurax.Page.evaluate_script/2` and `evaluate_script!/2` run a script, await a returned promise, and return `{:error, %Obscurax.Error{kind: :js_eval}}` when JavaScript throws or rejects. A promise that never settles fails after 30s instead of wedging the page thread.
+- `Obscurax.Page.content_type/1` returns the document MIME type.
+- `Obscurax.Page.stop_loading/1` cancels the document load in flight.
+- Interception messages carry `headers`: the headers the page set on the request itself, such as `fetch(url, {headers: ...})`.
+
+### Changed
+
+- Upgraded the bundled browser engine to obscura v0.2.5 (128 upstream commits). Web Storage and IndexedDB are now owned by the browser context, so `localStorage` survives navigation and is shared by the pages of one browser; each page's isolated context copy now shares those stores instead of starting empty. IndexedDB transactions commit atomically or roll back, module and stealth request histories keep their response bodies, and colour-scheme emulation reaches `matchMedia()` and rendering.
+
 ## 0.2.0 - 2026-10-16
 
 ### Breaking changes

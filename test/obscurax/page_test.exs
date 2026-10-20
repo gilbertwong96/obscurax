@@ -33,6 +33,40 @@ defmodule Obscurax.PageTest do
     assert "Example Domain" = Page.evaluate!(page, "document.title")
   end
 
+  test "evaluate_script/2 awaits a returned promise", %{page: page} do
+    TestFixture.goto!(page)
+    assert {:ok, 42} = Page.evaluate_script(page, "Promise.resolve(40 + 2)")
+  end
+
+  test "evaluate_script/2 reports the JavaScript error", %{page: page} do
+    TestFixture.goto!(page)
+
+    assert {:error, %Error{kind: :js_eval} = error} =
+             Page.evaluate_script(page, "throw new Error('boom')")
+
+    assert error.message =~ "boom"
+    assert error.context.expression == "throw new Error('boom')"
+  end
+
+  test "evaluate_script!/2 raises on a JavaScript error", %{page: page} do
+    TestFixture.goto!(page)
+
+    assert_raise Error, fn ->
+      Page.evaluate_script!(page, "throw new Error('boom')")
+    end
+  end
+
+  test "content_type/1 returns the document MIME type", %{page: page} do
+    TestFixture.goto!(page)
+    assert {:ok, content_type} = Page.content_type(page)
+    assert content_type =~ "text/html"
+  end
+
+  test "stop_loading/1 returns ok", %{page: page} do
+    TestFixture.goto!(page)
+    assert :ok = Page.stop_loading(page)
+  end
+
   test "content/1 returns the page HTML", %{page: page} do
     TestFixture.goto!(page)
     assert {:ok, html} = Page.content(page)
@@ -166,6 +200,30 @@ defmodule Obscurax.PageTest do
     Page.close(page)
 
     assert {:error, %Error{kind: :page_closed}} = Page.evaluate(page, "1")
+  end
+
+  test "evaluate_script/2 returns error on closed page" do
+    {:ok, browser} = Obscurax.Browser.new()
+    {:ok, page} = Obscurax.Browser.new_page(browser)
+    Page.close(page)
+
+    assert {:error, %Error{kind: :page_closed}} = Page.evaluate_script(page, "1")
+  end
+
+  test "content_type/1 returns error on closed page" do
+    {:ok, browser} = Obscurax.Browser.new()
+    {:ok, page} = Obscurax.Browser.new_page(browser)
+    Page.close(page)
+
+    assert {:error, %Error{}} = Page.content_type(page)
+  end
+
+  test "stop_loading/1 returns error on closed page" do
+    {:ok, browser} = Obscurax.Browser.new()
+    {:ok, page} = Obscurax.Browser.new_page(browser)
+    Page.close(page)
+
+    assert {:error, %Error{}} = Page.stop_loading(page)
   end
 
   test "evaluate!/2 raises on closed page" do
