@@ -135,6 +135,10 @@ fn page_context(base: &BrowserContext, page_id: String) -> Arc<BrowserContext> {
         base.proxy_url.as_deref(),
         base.allow_private_network,
     );
+    // The per-page client is ours, not `isolated_copy`'s, so it has to carry
+    // the file:// opt-in itself: the loader reads the flag off the client it
+    // fetches with, and a fresh client starts refusing local files.
+    client.set_allow_file_access(base.allow_file_access);
     client.block_trackers = base.stealth;
     if let Ok(mut user_agent) = client.user_agent.try_write() {
         *user_agent = base.user_agent.clone();

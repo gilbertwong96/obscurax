@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- `Obscurax.Page`'s `enable_interception/1` is replaced by `enable_interception/2`, which takes a handler and returns `{:ok, pid}`. obscura v0.2.6 intercepts the main document request, so every navigation now waits on a reply; answering from the process that awaits `goto/3` deadlocked until the 30s reply deadline continued the request. The handler runs in its own process, so the caller can navigate. `stop_interception/1` turns interception off.
+
+### Added
+
+- The main document request can be fulfilled, rewritten, or blocked. Fulfilling it replaces the whole page without a network round trip; failing it makes `goto/3` return `{:error, %Obscurax.Error{kind: :navigation}}`.
+
+### Changed
+
+- Upgraded the bundled browser engine to obscura v0.2.6 (117 upstream commits). Intercepted navigations keep their supplied bytes, repeated `Set-Cookie` headers, and request-local method and header overrides; CDP stays responsive while an evaluation awaits a promise; explicit network-idle navigation honours its deadline instead of reporting a false idle after five seconds; `checkVisibility()` and the computed-style longhands report what the engine actually laid out.
+
+### Fixed
+
+- `allow_file_access` reaches the HTTP client that enforces it. obscura v0.2.6 moved the `file://` gate into the loader, so setting the context field alone left every fetch refused.
+
 ## 0.2.1 - 2026-10-20
 
 ### Added

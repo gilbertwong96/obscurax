@@ -32,17 +32,35 @@ defmodule ObscuraxTest do
   test "reply_intercept/3 works through the public API" do
     {:ok, browser} = Obscurax.new()
     {:ok, page} = Obscurax.Browser.new_page(browser)
-    :ok = Obscurax.Page.enable_interception(page)
-    :ok = Obscurax.Page.goto(page, "https://example.com")
 
-    # Trigger a JS fetch which gets intercepted
-    spawn(fn -> Obscurax.Page.evaluate(page, "fetch('/').then(r => r.status)") end)
+    # Interception now covers the document request, so answering from the same
+    # process that awaits goto would deadlock. Drive the navigation from here
+    # and answer the intercepts as they arrive.
+    :ok = Obscurax.Nif.page_enable_interception(page.ref, self())
+    goto_id = Obscurax.Nif.page_goto(page.ref, "https://example.com")
 
-    assert_receive {:obscurax_intercept, ref, %{url: url}}, 5_000
-    assert url =~ "example.com"
-
-    # This should work through the public API (extracts .ref from %Page{})
+    assert_receive {:obscurax_intercept, ref, %{resource_type: "Document"}}, 5_000
     assert :ok = Obscurax.reply_intercept(page, ref, :continue)
+    assert_receive {:obscurax_result, ^goto_id, :ok}, 10_000
+
+    Obscurax.Page.close(page)
+  end
+
+  test "enable_interception/2 mocks a response without the network" do
+    {:ok, browser} = Obscurax.new()
+    {:ok, page} = Obscurax.Browser.new_page(browser)
+
+    {:ok, _pid} =
+      Obscurax.Page.enable_interception(page, fn
+        %{resource_type: "Document"} ->
+          {:fulfill, 200, %{"content-type" => "text/html"}, "<title>mocked</title>"}
+
+        _request ->
+          :continue
+      end)
+
+    :ok = Obscurax.Page.goto(page, "https://example.invalid/")
+    assert {:ok, "mocked"} = Obscurax.Page.evaluate(page, "document.title")
 
     Obscurax.Page.close(page)
   end

@@ -31,18 +31,22 @@ defmodule Obscurax.Page do
 
   ## Request interception
 
-      :ok = Obscurax.Page.enable_interception(page)
-      receive do
-        {:obscurax_intercept, ref, %{url: url}} ->
-          :ok = Obscurax.reply_intercept(page, ref, :continue)
-      end
+  obscura pauses every request — the main document included — until it is
+  answered, so interception runs in its own process. `enable_interception/2`
+  takes a handler that receives the request and returns a decision:
+
+      {:ok, _pid} = Obscurax.Page.enable_interception(page, fn request ->
+        if request.url =~ "example.com", do: :continue, else: {:fail, "blocked"}
+      end)
+
+      :ok = Obscurax.Page.goto(page, "https://example.com")
   """
 
   @type t :: %__MODULE__{ref: reference()}
 
   defstruct [:ref]
 
-  alias Obscurax.{Error, Nif}
+  alias Obscurax.{Error, Interceptor, Nif}
 
   @default_timeout 30_000
 
@@ -256,12 +260,55 @@ defmodule Obscurax.Page do
     end
   end
 
-  @spec enable_interception(t()) :: :ok | {:error, Error.t()}
-  def enable_interception(%__MODULE__{ref: ref}) do
-    case Nif.page_enable_interception(ref, self()) do
-      :ok -> :ok
-      {:error, error} -> {:error, error}
+  @doc """
+  Enable request interception, answering each request with `handler`.
+
+  Returns `{:ok, pid}` for the process that answers requests. It is not linked
+  to the caller, so `stop_interception/1` turns interception off without
+  affecting anything else.
+
+  `handler` receives a map with `:url`, `:method`, `:resource_type`, and
+  `:headers` — the headers the page set on the request itself, such as
+  `fetch(url, {headers: ...})` — and returns one of:
+
+    * `:continue` — send the request as it is
+    * `{:fulfill, status, headers, body}` — answer without hitting the network
+    * `{:fail, reason}` — abort the request
+
+  The handler runs in its own process, so it may block, and the caller is free
+  to call `goto/3` while it does. Any other return value, or a raised exception,
+  continues the request.
+
+  Interception covers the main document request too: a handler that fulfils it
+  replaces the whole page, and one that fails it makes `goto/3` return
+  `{:error, %Obscurax.Error{kind: :navigation}}`.
+  """
+  @spec enable_interception(t(), (map() -> Interceptor.decision())) ::
+          {:ok, pid()} | {:error, Error.t()}
+  def enable_interception(%__MODULE__{ref: ref}, handler) when is_function(handler, 1) do
+    case Interceptor.start(ref, handler) do
+      {:ok, pid} ->
+        {:ok, pid}
+
+      {:error, %Error{} = error} ->
+        {:error, error}
+
+      {:error, _} ->
+        {:error,
+         Error.exception(kind: :internal, message: "interceptor start failed", context: %{})}
     end
+  end
+
+  @doc """
+  Stop answering intercepted requests with the interceptor returned by
+  `enable_interception/2`.
+
+  Requests already in flight when the interceptor stops are continued after the
+  page thread's 30s reply deadline.
+  """
+  @spec stop_interception(pid()) :: :ok
+  def stop_interception(pid) when is_pid(pid) do
+    GenServer.stop(pid, :normal)
   end
 
   @spec close(t()) :: :ok

@@ -169,8 +169,46 @@ defmodule Obscurax.PageTest do
     assert url =~ "example.com"
   end
 
-  test "enable_interception/1 returns ok", %{page: page} do
-    assert :ok = Page.enable_interception(page)
+  test "enable_interception/2 starts an interceptor", %{page: page} do
+    assert {:ok, pid} = Page.enable_interception(page, fn _request -> :continue end)
+    assert :ok = Page.stop_interception(pid)
+  end
+
+  test "enable_interception/2 fulfils the main document request", %{page: page} do
+    {:ok, _pid} =
+      Page.enable_interception(page, fn
+        %{resource_type: "Document"} ->
+          {:fulfill, 200, %{"content-type" => "text/html"}, "<title>mocked</title>"}
+
+        _request ->
+          :continue
+      end)
+
+    :ok = Page.goto(page, "https://example.invalid/")
+    assert {:ok, "mocked"} = Page.evaluate(page, "document.title")
+  end
+
+  test "enable_interception/2 fails the main document request", %{page: page} do
+    {:ok, _pid} = Page.enable_interception(page, fn _request -> {:fail, "blocked"} end)
+
+    assert {:error, %Error{kind: :navigation}} = Page.goto(page, "https://example.invalid/")
+  end
+
+  test "enable_interception/2 continues when the handler raises", %{page: page} do
+    {:ok, _pid} =
+      Page.enable_interception(page, fn _request -> raise "handler boom" end)
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      assert :ok = Page.goto(page, "https://example.com")
+    end)
+  end
+
+  test "enable_interception/2 continues on an unknown decision", %{page: page} do
+    {:ok, _pid} = Page.enable_interception(page, fn _request -> :nonsense end)
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      assert :ok = Page.goto(page, "https://example.com")
+    end)
   end
 
   test "close/1 returns ok", %{page: page} do
@@ -306,12 +344,12 @@ defmodule Obscurax.PageTest do
     assert {:error, %Error{}} = Page.add_preload_script(page, "1")
   end
 
-  test "enable_interception/1 returns error on closed page" do
+  test "enable_interception/2 returns error on closed page" do
     {:ok, browser} = Obscurax.Browser.new()
     {:ok, page} = Obscurax.Browser.new_page(browser)
     Page.close(page)
 
-    assert {:error, %Error{}} = Page.enable_interception(page)
+    assert {:error, %Error{}} = Page.enable_interception(page, fn _request -> :continue end)
   end
 
   test "on_request/2 returns error on closed page" do

@@ -61,9 +61,10 @@ pub fn browser_new<'a>(env: Env<'a>, opts: Term<'a>) -> NifResult<Term<'a>> {
         }
     };
 
-    // No obscura constructor accepts this flag, and pages inherit it through
-    // `isolated_copy`, so setting it here covers the whole browser.
-    context.allow_file_access = allow_file_access;
+    // No obscura constructor accepts this flag. The setter, not the field, is
+    // what reaches the http client that enforces it per fetch; pages copy the
+    // setting through `isolated_copy`.
+    context.set_allow_file_access(allow_file_access);
 
     let handle = ResourceArc::new(BrowserHandle {
         context: Arc::new(context),

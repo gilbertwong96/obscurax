@@ -39,13 +39,22 @@ defmodule Obscurax do
   @doc """
   Reply to an intercepted request with a decision.
 
-  Call this inside your `{:obscurax_intercept, ref, req}` receive handler:
+  This is the NIF-level primitive behind `Obscurax.Page.enable_interception/2`.
+  Use it when you drive interception yourself: call the Nif module's
+  `page_enable_interception/2` with the pid that should receive
+  `{:obscurax_intercept, ref, req}`, then answer each request here.
 
-      :ok = Obscurax.Page.enable_interception(page)
+      Nif.page_enable_interception(page.ref, self())
+
       receive do
         {:obscurax_intercept, ref, %{url: url}} ->
           Obscurax.reply_intercept(page, ref, :continue)
       end
+
+  Because obscura also intercepts the main document request, a process that
+  awaits `Obscurax.Page.goto/3` cannot also answer these messages — the
+  navigation waits for a reply the caller will only send after it returns. Use
+  `Obscurax.Page.enable_interception/2`, which answers from its own process.
   """
   @spec reply_intercept(Obscurax.Page.t(), reference(), term()) ::
           :ok | {:error, Obscurax.Error.t()}

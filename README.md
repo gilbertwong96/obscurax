@@ -30,7 +30,7 @@ Obscurax drives a real JavaScript engine from Elixir — but not the way a WebDr
 - **No Rust toolchain required.** `rustler_precompiled` fetches a SHA-256-verified binary for your platform at compile time. Rust is only needed to build from source.
 - **Erlang-shaped API.** Every function returns `{:ok, value}` or `{:error, %Obscurax.Error{}}`; bang variants raise. You get predictable return values instead of a driver protocol.
 - **Structured errors you can pattern-match.** `%Obscurax.Error{kind: :element_not_found, message: "...", context: %{selector: "h1"}}` — `kind` is one of `:navigation`, `:js_eval`, `:timeout`, `:element_not_found`, `:no_page`, `:page_closed`, `:internal`, and `context` carries operation-specific details.
-- **Request interception is built in.** Pause, inspect, rewrite, mock, or block requests from Elixir with `enable_interception/1` and `reply_intercept/3`.
+- **Request interception is built in.** Pause, inspect, rewrite, mock, or block requests — the main document included — with `enable_interception/2` and a handler that returns a decision.
 - **Stealth mode** (opt-in) for detection-sensitive targets, plus **local file access** (opt-in) for testing HTML on disk.
 
 ## Performance and footprint
@@ -116,15 +116,20 @@ Obscurax.Page.goto!(page, "https://example.com")
 "Example Domain" = Obscurax.Page.evaluate!(page, "document.title")
 ```
 
-Mock a network response without leaving Elixir:
+Mock a whole page without leaving Elixir:
 
 ```elixir
-:ok = Obscurax.Page.enable_interception(page)
+{:ok, _pid} =
+  Obscurax.Page.enable_interception(page, fn
+    %{resource_type: "Document"} ->
+      {:fulfill, 200, %{"content-type" => "text/html"}, ~s(<title>mocked</title>)}
 
-receive do
-  {:obscurax_intercept, ref, %{url: url}} ->
-    :ok = Obscurax.reply_intercept(page, ref, {:fulfill, 200, %{}, ~s({"ok":true})})
-end
+    _request ->
+      :continue
+  end)
+
+:ok = Obscurax.Page.goto(page, "https://example.com")
+{:ok, "mocked"} = Obscurax.Page.evaluate(page, "document.title")
 ```
 
 ## Features
@@ -154,7 +159,7 @@ end
 ### Network observability
 
 - `on_request/2` and `on_response/2` — every request/response is delivered to a callback process
-- `enable_interception/1` + `reply_intercept/3` — resolve each intercepted request with `:continue`, `{:fulfill, status, headers, body}` to mock it, or `{:fail, reason}` to block it
+- `enable_interception/2` — answer each request with `:continue`, `{:fulfill, status, headers, body}` to mock it, or `{:fail, reason}` to block it; `stop_interception/1` turns it off
 
 ### Cookies
 
@@ -206,7 +211,7 @@ Yes. Each page has its own OS thread and its own V8 isolate, and JavaScript eval
 No. Evaluation runs on dirty CPU schedulers, and each page owns a separate runtime, so unrelated BEAM processes keep running.
 
 **How do I mock or block a request?**
-Call `Obscurax.Page.enable_interception/1`, receive `{:obscurax_intercept, ref, req}`, then call `Obscurax.reply_intercept/3` with `:continue`, `{:fulfill, status, headers, body}`, or `{:fail, reason}`. `req.headers` carries the headers the page set on the request itself, such as `fetch(url, {headers: ...})`.
+Call `Obscurax.Page.enable_interception/2` with a handler that returns `:continue`, `{:fulfill, status, headers, body}`, or `{:fail, reason}`. The handler runs in its own process, so it can block and the caller is free to navigate. `req.headers` carries the headers the page set on the request itself, such as `fetch(url, {headers: ...})`. Interception covers the main document request, so fulfilling it replaces the whole page.
 
 **How are errors reported?**
 Non-bang functions return `{:error, %Obscurax.Error{}}` with a `kind`, a `message`, and a `context` map; bang variants raise the same struct.

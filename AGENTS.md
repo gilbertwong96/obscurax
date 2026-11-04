@@ -10,6 +10,7 @@ Obscurax is an Elixir binding for the [obscura](https://github.com/h4ckf0r0day/o
   - `browser.ex` — browser lifecycle (`new/1`, `new_page/1`, `cookies/1`)
   - `page.ex` — navigation, V8 eval, element ops, observers, interception
   - `callback.ex` — GenServer wrapping user callback functions for request/response observers
+  - `interceptor.ex` — GenServer that answers each intercepted request with a handler function
   - `cookie_store.ex` — cookie CRUD backed by obscura's `CookieJar`
   - `error.ex` — structured error type
 - **Rust NIF layer** (`native/obscurax/src/`) — Rustler NIFs bridging to obscura
@@ -82,8 +83,9 @@ Not supported (no rusty_v8 prebuilt binaries): musl, riscv64, windows-gnu. Intel
 - **Per-page connection pool** — hyper drives each pooled connection with a task on the runtime that created it, and page runtimes are short-lived, so a pool shared across pages lets `Page.close/1` kill a sibling page's connection (`runtime dropped the dispatch task`). Pages therefore build their context from `BrowserContext::isolated_copy` and get their own `ObscuraHttpClient`. The cookie jar and robots cache stay browser-wide.
 - **Browser-scoped Web Storage** — obscura 0.2.5 moved `localStorage` and IndexedDB onto `BrowserContext`, where `isolated_copy` gives an incognito copy a fresh, empty store. `page_context` therefore re-shares `local_storage` and `indexed_db` from the base context, so a page keeps its data across navigations and sibling pages see it. `sessionStorage` stays per page, as obscura intends.
 - **`evaluate_script` goes through the CDP path** — `Page::evaluate_script` returns the promise object, not its settled value. `evaluate_script/2` calls `evaluate_for_cdp_with_timeout(script, true, true, 30_000)` instead, which awaits a returned promise, flags a thrown value, and cannot hang the page thread.
+- **Interception runs in its own process** — obscura v0.2.6 intercepts the main document request, so a navigation blocks until that request is answered. `enable_interception/2` starts `Obscurax.Interceptor`, so the handler never runs in the process awaiting `goto/3`; answering from there would deadlock until the page thread's 30s reply deadline continued the request.
 - **Lower-level obscura crates, not the `obscura` facade** — the per-page context has to be built directly, and the facade's `Browser.context`/`Page.inner` are private. Uses `obscura-browser` + `obscura-net`.
-- **Upstream obscura, pinned tag** — depends on `h4ckf0r0day/obscura@v0.2.5` (deno_core 0.412, v8 150.4.0). The `gilbertwong96/obscura@upgrade-deno-core` fork existed only to carry v8 past 149.4.0 for the Rusty_v8 `local-dynamic` TLS fix; upstream has since moved past that itself, so the fork is obsolete. Pinning an immutable tag (not a branch) also stops the dependency from drifting out from under `Cargo.lock`. A git dependency is required — the `obscura` crate on crates.io is an unrelated project.
+- **Upstream obscura, pinned tag** — depends on `h4ckf0r0day/obscura@v0.2.6` (deno_core 0.412, v8 150.4.0). The `gilbertwong96/obscura@upgrade-deno-core` fork existed only to carry v8 past 149.4.0 for the Rusty_v8 `local-dynamic` TLS fix; upstream has since moved past that itself, so the fork is obsolete. Pinning an immutable tag (not a branch) also stops the dependency from drifting out from under `Cargo.lock`. A git dependency is required — the `obscura` crate on crates.io is an unrelated project.
 - **v8 150.4.0** — includes [rusty_v8 PR #1911](https://github.com/denoland/rusty_v8/pull/1911) which switches from `initial-exec` to `local-dynamic` TLS model, fixing `R_X86_64_TPOFF32` relocation errors when linking V8 into a shared library on Linux.
 
 ## Code Style
@@ -102,8 +104,8 @@ Not supported (no rusty_v8 prebuilt binaries): musl, riscv64, windows-gnu. Intel
 ## Testing
 
 - DOM behaviour tests navigate to a `data:` URL fixture (`test/support/test_fixture.ex`), so they never depend on a third-party page's markup
-- Network behaviour (request/response observers, interception, cookies, navigation errors) still hits `https://example.com` — no local test server
-- 95 tests, 80% coverage threshold enforced
+- Network behaviour (request/response observers, interception, cookies, navigation errors) still hits `https://example.com` — no local test server. Document-fulfilling interception tests need no network at all, since the mocked document replaces the page.
+- 100 tests, 80% coverage threshold enforced
 - The `[error]` log from "callback survives a raising user function" test is suppressed via `capture_log`
 - The Nif module is excluded from coverage (NIF stubs)
 

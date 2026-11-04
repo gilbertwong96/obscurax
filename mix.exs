@@ -80,7 +80,7 @@ defmodule Obscurax.MixProject do
       extras: ["README.md", "CHANGELOG.md", "LICENSE", "AGENTS.md"],
       groups_for_modules: [
         API: [Obscurax, Obscurax.Browser, Obscurax.Page, Obscurax.CookieStore],
-        Internal: [Obscurax.Callback, Obscurax.Error]
+        Internal: [Obscurax.Callback, Obscurax.Interceptor, Obscurax.Error]
       ]
     ]
   end

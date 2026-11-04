@@ -21,6 +21,31 @@ defmodule Obscurax.CallbackTest do
     end
   end
 
+  # obscura intercepts the main document request, so the navigation itself
+  # arrives as an intercept the page thread waits on before it can reply. Start
+  # the navigation, continue the document request, and leave intercepts that
+  # belong to the test's own fetch in the mailbox.
+  defp goto_continuing_document(page, url) do
+    id = Nif.page_goto(page, url)
+    continue_document_until_result(page, id)
+  end
+
+  defp continue_document_until_result(page, id) do
+    receive do
+      {:obscurax_result, ^id, :ok} ->
+        :ok
+
+      {:obscurax_result, ^id, :error, msg} ->
+        flunk("goto failed: #{msg}")
+
+      {:obscurax_intercept, ref, %{resource_type: "Document"}} ->
+        :ok = Nif.reply_intercept(page, ref, :continue)
+        continue_document_until_result(page, id)
+    after
+      30_000 -> flunk("goto timed out")
+    end
+  end
+
   test "on_request fires a message for page requests", %{page: page} do
     :ok = Nif.page_on_request(page, 1, self())
 
@@ -34,7 +59,7 @@ defmodule Obscurax.CallbackTest do
        %{page: page} do
     :ok = Nif.page_enable_interception(page, self())
 
-    await_goto(page, "https://example.com")
+    goto_continuing_document(page, "https://example.com")
 
     {:ok, _} =
       Nif.page_evaluate(page, "fetch('/').then(r => r.status).catch(e => 'err:' + e)")
@@ -48,7 +73,7 @@ defmodule Obscurax.CallbackTest do
   test "enable_interception reports the request headers the page set", %{page: page} do
     :ok = Nif.page_enable_interception(page, self())
 
-    await_goto(page, "https://example.com")
+    goto_continuing_document(page, "https://example.com")
 
     {:ok, _} =
       Nif.page_evaluate(
@@ -66,7 +91,7 @@ defmodule Obscurax.CallbackTest do
        %{page: page} do
     :ok = Nif.page_enable_interception(page, self())
 
-    await_goto(page, "https://example.com")
+    goto_continuing_document(page, "https://example.com")
 
     {:ok, _} =
       Nif.page_evaluate(
