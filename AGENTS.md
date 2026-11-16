@@ -59,14 +59,14 @@ cd native/obscurax && cargo fmt --check && cargo clippy -- -D warnings
 `mix ci` runs: compile, format check, credo --strict, deps audit, xref graph, dialyzer, ex_dna, reach dead-code/smells, test --cover (80% threshold).
 
 GitHub Actions:
-- `.github/workflows/ci.yml` — Elixir tests on ubuntu-24.04/OTP 29 and macos-14/OTP 27
+- `.github/workflows/ci.yml` — Elixir tests on ubuntu-24.04/OTP 29 and macos-15/OTP 27
 - `.github/workflows/release.yml` — precompile NIF binaries for 4 targets, publish on tag push
 
 ## Supported NIF Targets
 
 | Target | OS | Notes |
 |--------|-----|-------|
-| `aarch64-apple-darwin` | macOS ARM | Native build on macos-14 |
+| `aarch64-apple-darwin` | macOS ARM | Native build on macos-15 |
 | `aarch64-unknown-linux-gnu` | Linux ARM | Cross-compiled, `cross-version: from-source` for glibc with `memfd_create` |
 | `x86_64-unknown-linux-gnu` | Linux x86_64 | Native build on ubuntu-24.04 |
 | `x86_64-pc-windows-msvc` | Windows | Native build on windows-2022 |
