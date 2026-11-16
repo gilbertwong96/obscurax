@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Upgraded the bundled browser engine to obscura v0.2.7 (87 upstream commits). Back and Forward traverse a live document without reloading it or duplicating history entries, forms, selects, and tables expose the live collections automation expects, custom elements receive their connection and observed-attribute reactions, and 24 more HTML interfaces get distinct prototypes instead of aliasing unrelated tags. Grid track redistribution, invalid grid spans, malformed CSS imports, short SVG `viewBox` values, and deeply nested documents no longer hang or abort the process.
+- Navigation now fails with `{:error, %Obscurax.Error{kind: :navigation}}` when the response is an empty HTTP error, instead of reporting success for a blank page. A noninteractive `confirm()` returns `false` instead of accepting the action; `alert()` and `prompt()` are unchanged.
+
+### Security
+
+- Browsers created with `:storage_dir` write owner-only profiles: `0700` directories and a `0600` cookie file on Unix, with existing directory permissions left alone. Engine hardening carried in v0.2.7 also scopes imported public-suffix cookies to their exact host, keeps the privileged `deno_core` bootstrap alias out of page globals, and validates history URLs against the committed document URL.
+
 ## 0.3.0 - 2026-11-04
 
 ### Breaking changes

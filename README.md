@@ -6,7 +6,7 @@
 [![Elixir](https://img.shields.io/badge/elixir-1.18+-purple.svg)](https://elixir-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-Elixir binding for the [obscura](https://github.com/h4ckf0r0day/obscura) headless browser engine, built with [Rustler](https://github.com/rusterlium/rustler). The engine is pinned to obscura **v0.2.5** (deno_core 0.412, V8 150.4.0).
+Elixir binding for the [obscura](https://github.com/h4ckf0r0day/obscura) headless browser engine, built with [Rustler](https://github.com/rusterlium/rustler). The engine is pinned to obscura **v0.2.7** (deno_core 0.412, V8 150.4.0).
 
 Obscurax drives a real JavaScript engine from Elixir — but not the way a WebDriver binding does. There is no Chrome to install, no driver process to supervise, and no Node or Python in the loop: the engine is a Rust shared library shipped as a precompiled NIF, and every page gets its own OS thread and V8 isolate so pages execute JavaScript genuinely in parallel.
 
@@ -14,7 +14,7 @@ Obscurax drives a real JavaScript engine from Elixir — but not the way a WebDr
 
 | | |
 |---|---|
-| Engine | obscura v0.2.5 — Rust headless browser with V8 150.4.0 embedded |
+| Engine | obscura v0.2.7 — Rust headless browser with V8 150.4.0 embedded |
 | Runtime dependencies | `rustler_precompiled` (that's it) |
 | External browser or driver | none |
 | Elixir / OTP | 1.18+ / OTP 26+ |
